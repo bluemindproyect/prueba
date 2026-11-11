@@ -1,13 +1,18 @@
 import { ACTS, LEVELS, REACT, STATES, TARGETS, THOUGHTS } from './data';
+import { cloneLive, freshLive, reactToAct, relocate, reviveLive } from './live';
+import type { Rng } from './live';
+import { stage } from './stage';
 import type { Act, Chip, GameState, ModeId, Target, Turn } from './types';
 
-/** Generador de números entre 0 y 1. Se inyecta para poder probar el motor. */
-export type Rng = () => number;
+export { stage } from './stage';
+export { tick } from './live';
+export type { Rng } from './live';
 
 export const findAct = (id: string): Act | undefined => ACTS.find((a) => a.id === id);
 export const findTarget = (id: string): Target | undefined => TARGETS.find((t) => t.id === id);
 
 const clamp = (n: number): number => Math.max(0, Math.min(100, Math.round(n)));
+const lowerFirst = (s: string): string => s.charAt(0).toLowerCase() + s.slice(1);
 
 function pickOne<T>(items: readonly T[], rng: Rng): T {
   return items[Math.floor(rng() * items.length)];
@@ -19,15 +24,6 @@ export function level(sat: number): number {
     if (sat >= min) l = i + 1;
   });
   return l;
-}
-
-/** Estado de él según su humillación: 0 Tranquilo … 4 Quebrado. */
-export function stage(humiliation: number): number {
-  if (humiliation < 15) return 0;
-  if (humiliation < 35) return 1;
-  if (humiliation < 60) return 2;
-  if (humiliation < 85) return 3;
-  return 4;
 }
 
 /** Probabilidad (%) de que él te vea cuando está cerca. */
@@ -46,6 +42,13 @@ export function fill(text: string, name: string, target?: Target): string {
 /** Satisfacción que muestra el botón antes de jugarlo. */
 export function gainPreview(act: Act, target: Target, mode: ModeId): number {
   return Math.round(act.sat * target.ms * (mode === 'frente' ? 2 : 1));
+}
+
+/** ¿Se puede jugar esta acción con el modo actual? */
+export function playable(act: Act, mode: ModeId, sat: number): boolean {
+  if (act.lvl > level(sat)) return false;
+  if (act.withHim && mode === 'ausente') return false;
+  return true;
 }
 
 export function freshState(): GameState {
@@ -67,30 +70,40 @@ export function freshState(): GameState {
     last: null,
     tab: 1,
     pick: { mode: 'ausente', target: 'desc' },
+    live: freshLive(),
   };
 }
+
+const MODE_IDS: readonly ModeId[] = ['ausente', 'cerca', 'frente'];
 
 /** Valida y completa lo guardado en localStorage. */
 export function reviveState(raw: unknown): GameState | null {
   if (!raw || typeof raw !== 'object') return null;
   const saved = raw as Partial<GameState>;
   if (typeof saved.sat !== 'number') return null;
+  const mode = saved.pick?.mode;
+  const target = saved.pick?.target;
   const merged: GameState = {
     ...freshState(),
     ...saved,
     pick: {
-      mode: saved.pick?.mode ?? 'ausente',
-      target: saved.pick?.target ?? 'desc',
+      mode: mode && MODE_IDS.includes(mode) ? mode : 'ausente',
+      target: target && findTarget(target) ? target : 'desc',
     },
+    live: reviveLive(saved.live),
   };
-  if (merged.last && !merged.last.aid) merged.last = null;
+  // Las acciones cambiaron de ids: lo último jugado en una versión vieja ya no existe.
+  if (merged.last && (!findAct(merged.last.aid) || !findTarget(merged.last.tid))) merged.last = null;
+  if (merged.last) merged.last = { ...merged.last, follow: merged.last.follow.filter((id) => findAct(id)) };
+  merged.tab = Math.min(Math.max(1, merged.tab || 1), level(merged.sat));
   return merged;
 }
 
-function followUps(act: Act, lvl: number, rng: Rng): string[] {
-  const ups = ACTS.filter((x) => x.lvl <= lvl && x.id !== act.id && x.sat > act.sat).slice(0, 3);
+function followUps(act: Act, lvl: number, mode: ModeId, rng: Rng): string[] {
+  const ok = (x: Act) => x.lvl <= lvl && x.id !== act.id && !(x.withHim && mode === 'ausente');
+  const ups = ACTS.filter((x) => ok(x) && x.sat > act.sat).slice(0, 3);
   if (ups.length < 2) {
-    const pool = ACTS.filter((x) => x.lvl <= lvl && x.lvl >= lvl - 1 && x.id !== act.id && !ups.includes(x));
+    const pool = ACTS.filter((x) => ok(x) && x.lvl >= lvl - 1 && !ups.includes(x));
     while (ups.length < 3 && pool.length) {
       ups.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
     }
@@ -98,13 +111,14 @@ function followUps(act: Act, lvl: number, rng: Rng): string[] {
   return ups.map((x) => x.id);
 }
 
-export function setMode(prev: GameState, mode: ModeId): GameState {
-  return {
+export function setMode(prev: GameState, mode: ModeId, rng: Rng = Math.random): GameState {
+  const next: GameState = {
     ...prev,
     combo: 0,
     pick: { ...prev.pick, mode },
     last: prev.last ? { ...prev.last, follow: [] } : null,
   };
+  return relocate(next, rng);
 }
 
 export function setTarget(prev: GameState, target: string): GameState {
@@ -130,9 +144,9 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
   const target = findTarget(prev.pick.target);
   const mode = prev.pick.mode;
   const before = level(prev.sat);
-  if (!act || !target || act.lvl > before) return prev;
+  if (!act || !target || !playable(act, mode, prev.sat)) return prev;
 
-  const s: GameState = { ...prev, log: [...prev.log] };
+  const s: GameState = { ...prev, log: [...prev.log], live: cloneLive(prev.live) };
   const n = chained ? s.combo + 1 : 0;
   if (!chained && s.cheat > 0) s.turn++;
 
@@ -140,7 +154,8 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
   const stale = act.lvl < before - 1;
   const base = act.sat * target.ms * (stale ? 0.5 : 1) * (1 + 0.15 * n);
   const short = fill(act.txt, name, target);
-  let line = `${short}. ${fill(act.det, name, target)}`;
+  const det = fill(act.det, name, target);
+  let line: string;
 
   let gain: number;
   let thought: string;
@@ -155,7 +170,7 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
     gain = base;
     s.away++;
     s.streak++;
-    line += ' ' + fill('{n} no está. No se entera de nada.', name);
+    line = `${short}. ${det} ${fill('{n} no está. No se entera de nada.', name)}`;
     thought = pickOne([...(target.th ?? []), ...THOUGHTS.ausente], rng);
   } else if (mode === 'cerca') {
     if (rng() * 100 < risk(act, s.s, n)) {
@@ -166,13 +181,14 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
       ds = 15;
       dh = act.hum * target.mh * 0.6;
       dc = -8;
-      line += ' ' + fill('{n} voltea justo a tiempo para ver algo. No sabe bien qué vio, pero lo vio.', name);
+      line = `${short}. ${det} ${fill('{n} voltea justo a tiempo para ver algo. No sabe bien qué vio, pero lo vio.', name)}`;
       thought = pickOne(THOUGHTS.visto, rng);
     } else {
       gain = base * 1.5;
       s.away++;
       s.streak++;
-      line += ' ' + fill('{n} está a unos metros, de espaldas. No voltea.', name);
+      const tail = act.withHim ? '{n} no sospecha nada.' : '{n} está a unos metros, de espaldas. No voltea.';
+      line = `${short}. ${det} ${fill(tail, name)}`;
       thought = pickOne([...(target.th ?? []), ...THOUGHTS.ok], rng);
     }
   } else {
@@ -183,12 +199,15 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
     dh = act.hum * target.mh;
     dc = -dh / 2;
     ds = 10;
-    if (act.priv) {
-      line += ' ' + fill('{n} se queda afuera. Sabe exactamente qué está pasando.', name);
+    const react = fill(pickOne(REACT[stageNow], rng), name);
+    if (act.withHim) {
+      // Aquí no hay engaño: él entiende lo que pasa mientras pasa.
+      line = `Sin esconderte: ${lowerFirst(short)}. ${react}`;
+    } else if (act.priv) {
+      line = `${short}. ${det} ${fill('{n} se queda afuera. Sabe exactamente qué está pasando.', name)} ${react}`;
     } else {
-      line = fill('Con {n} viendo: ', name) + line.charAt(0).toLowerCase() + line.slice(1);
+      line = `${fill('Con {n} viendo: ', name)}${lowerFirst(short)}. ${det} ${react}`;
     }
-    line += ' ' + fill(pickOne(REACT[stageNow], rng), name);
     thought = pickOne(THOUGHTS.frente, rng);
   }
 
@@ -210,6 +229,10 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
   s.s = clamp(s.s + ds);
   const stageAfter = stage(s.h);
 
+  // Lo que pasa dentro de él (solo si está presente).
+  const bpm0 = s.live.bpm;
+  reactToAct(s, act, seen, rng);
+
   const chips: Chip[] = [{ text: `+${gain} satisfacción`, tone: 'up' }];
   if (n > 0) chips.push({ text: `combo ×${n + 1}`, tone: 'up' });
   if (!seen) chips.push({ text: 'te saliste con la tuya', tone: 'up' });
@@ -217,6 +240,7 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
   if (s.h !== h0) chips.push({ text: `humillación +${s.h - h0}`, tone: 'him' });
   if (s.c !== c0) chips.push({ text: `confianza ${s.c - c0}`, tone: 'him' });
   if (s.s !== s0) chips.push({ text: `sospecha +${s.s - s0}`, tone: 'bad' });
+  if (s.live.bpm - bpm0 >= 4) chips.push({ text: `pulso ${bpm0} → ${s.live.bpm}`, tone: 'bad' });
   if (mode === 'ausente') chips.push({ text: 'sin efecto en él', tone: '' });
 
   const after = level(s.sat);
@@ -238,7 +262,7 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
     thought,
     chips,
     notes,
-    follow: alive ? followUps(act, after, rng) : [],
+    follow: alive ? followUps(act, after, mode, rng) : [],
   };
   s.last = turn;
 

@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { freshState, play, reviveState, setMode, setName, setTab, setTarget } from '@/lib/a-sus-espaldas/engine';
+import { useEffect, useState } from 'react';
+import { freshState, play, reviveState, setMode, setName, setTab, setTarget, tick } from '@/lib/a-sus-espaldas/engine';
 import type { GameState } from '@/lib/a-sus-espaldas/types';
 import { cn } from '@/lib/cn';
 import { usePersistentState } from '@/lib/use-persistent-state';
 import { Deck } from './Deck';
+import { LiveBar, LivePanel } from './LivePanel';
 import { Scene } from './Scene';
 import { StatusPanel } from './StatusPanel';
 import { TurnResult } from './TurnResult';
@@ -17,9 +18,20 @@ const STORAGE_KEY = 'a-sus-espaldas-v1';
 export default function Game() {
   const [state, setState, ready] = usePersistentState<GameState>(STORAGE_KEY, freshState, reviveState);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [paused, setPaused] = useState(false);
 
+  // Tiempo real: un segundo a la vez. Se detiene si pausas o si cambias de pestaña.
+  useEffect(() => {
+    if (!ready || paused) return;
+    const id = window.setInterval(() => {
+      if (!document.hidden) setState((s) => tick(s));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [ready, paused, setState]);
+
+  // Todas las jugadas usan la forma funcional para no pisar los segundos que corren.
   const onPlay = (actId: string, chained: boolean) => {
-    setState(play(state, actId, chained));
+    setState((s) => play(s, actId, chained));
     window.scrollTo(0, 0);
   };
 
@@ -37,8 +49,11 @@ export default function Game() {
     <div className={cn(styles.root, !ready && styles.loading)}>
       <div className={styles.wrap}>
         <header className={styles.top}>
-          <h1 className={styles.title}>A Sus Espaldas</h1>
-          <span className={cn(styles.label, styles.num)}>Día {state.turn}</span>
+          <div className={styles.titleBlock}>
+            <h1 className={styles.title}>A Sus Espaldas</h1>
+            <span className={cn(styles.label, styles.num)}>Día {state.turn}</span>
+          </div>
+          <LiveBar state={state} />
         </header>
 
         <section className={styles.stage} aria-label="Escena">
@@ -46,13 +61,15 @@ export default function Game() {
           <TurnResult state={state} onPlay={(id) => onPlay(id, true)} />
         </section>
 
-        <StatusPanel state={state} onName={(name) => setState(setName(state, name))} />
+        <LivePanel state={state} paused={paused} onTogglePause={() => setPaused((p) => !p)} />
+
+        <StatusPanel state={state} onName={(name) => setState((s) => setName(s, name))} />
 
         <Deck
           state={state}
-          onMode={(mode) => setState(setMode(state, mode))}
-          onTarget={(id) => setState(setTarget(state, id))}
-          onTab={(tab) => setState(setTab(state, tab))}
+          onMode={(mode) => setState((s) => setMode(s, mode))}
+          onTarget={(id) => setState((s) => setTarget(s, id))}
+          onTab={(tab) => setState((s) => setTab(s, tab))}
           onPlay={(id) => onPlay(id, false)}
         />
 

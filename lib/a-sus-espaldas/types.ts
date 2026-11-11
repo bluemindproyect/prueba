@@ -31,7 +31,11 @@ export interface Act {
   risk: number;
   /** pasa a puerta cerrada: si él está presente se queda afuera */
   priv?: boolean;
-  /** lo que pasó, dado a entender */
+  /** él participa sin saber lo que pasa: no se puede jugar si no está */
+  withHim?: boolean;
+  /** lo que a él le puede quedar sin cuadrar (frase corta, en minúscula) */
+  clue?: string;
+  /** lo que pasó, dado a entender (versión en la que él no sabe nada) */
   det: string;
 }
 
@@ -58,6 +62,47 @@ export interface Turn {
   follow: string[];
 }
 
+/* ---------- tiempo real ---------- */
+
+export type Mood = 'sereno' | 'inquieto' | 'confundido' | 'desconfiado' | 'dolido' | 'resignado' | 'alterado';
+
+export type FeedKind = 'thought' | 'move';
+
+/** Un pensamiento suyo o algo que hace, en la lista en vivo. */
+export interface FeedItem {
+  id: number;
+  kind: FeedKind;
+  text: string;
+  /** segundo del reloj en que ocurrió */
+  at: number;
+  /** salió en un momento de mucha tensión */
+  hot: boolean;
+}
+
+/** Lo que pasa dentro de él, que sigue corriendo aunque no hagas nada. */
+export interface Live {
+  /** segundos desde que empezó */
+  clock: number;
+  /** latidos por minuto */
+  bpm: number;
+  /** últimos latidos, para la gráfica */
+  hist: number[];
+  /** 0 a 100. Sube con lo que ve o sospecha y baja con el tiempo */
+  tension: number;
+  /** 0 a 100. Cuánto no le cuadra */
+  confusion: number;
+  mood: Mood;
+  /** qué está haciendo ahora */
+  doing: string;
+  /** más nuevo primero, máximo 8 */
+  feed: FeedItem[];
+  /** cosas que no le cuadran, máximo 5 */
+  puzzles: string[];
+  nextThought: number;
+  nextMove: number;
+  seq: number;
+}
+
 export interface GameState {
   name: string;
   sat: number;
@@ -77,4 +122,5 @@ export interface GameState {
   last: Turn | null;
   tab: number;
   pick: { mode: ModeId; target: string };
+  live: Live;
 }
