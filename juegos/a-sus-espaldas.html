@@ -280,7 +280,8 @@ footer { font-size: .75rem; color: var(--muted); }
     }
     if (o.sweat) g += '<path d="M14 ' + (-60 + hd) + ' q3 5 0 7 q-3 -2 0 -7z" fill="currentColor" stroke="none"/>';
     if (o.mark) g += '<text x="0" y="' + (-66 + hd) + '" style="font-size:13px;fill:currentColor" stroke="none">' + o.mark + '</text>';
-    return '<g class="' + cls + (o.pop ? ' pop' : '') + '" style="opacity:' + (o.op || 1) + '" transform="translate(' + x + ',108) scale(' + (o.s || 1) + ')" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"' + (o.dash ? ' stroke-dasharray="3 4"' : '') + '>' + g + '</g>';
+    // El grupo de afuera lleva la posición; el de adentro, la animación (si no, el CSS pisa el transform).
+    return '<g transform="translate(' + x + ',108) scale(' + (o.s || 1) + ')"><g class="' + cls + (o.pop ? ' pop' : '') + '" style="opacity:' + (o.op || 1) + '" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"' + (o.dash ? ' stroke-dasharray="3 4"' : '') + '>' + g + '</g></g>';
   }
   function heart(x, y, s) {
     return '<g transform="translate(' + x + ',' + y + ') scale(' + s + ')"><path class="float" d="M0 4 C-6 -5 -13 2 0 13 C13 2 6 -5 0 4Z" fill="var(--rose)"/></g>';

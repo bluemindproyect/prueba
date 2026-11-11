@@ -1,0 +1,448 @@
+/* Layout: una columna del ancho de un celular que cabe en una pantalla.
+   Escena con los muñequitos arriba, lo que pasó debajo, luego marcadores
+   y un panel compacto: dónde está él / con quién / pestañas por nivel / acciones.
+   Tú = ámbar, el otro = rosa, él = azul frío. */
+
+.root {
+  min-height: 100dvh;
+  background: var(--night);
+  color: var(--text);
+  font-family: var(--prose);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  transition: opacity 0.2s ease;
+}
+.loading {
+  opacity: 0;
+}
+.wrap {
+  max-width: 30rem;
+  margin: 0 auto;
+  padding-top: calc(0.9rem + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+.title {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1;
+  margin: 0;
+}
+.back {
+  font-family: var(--util);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.label {
+  font-family: var(--util);
+  font-weight: 400;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.root button {
+  font: inherit;
+  color: inherit;
+}
+.root button:focus-visible,
+.root input:focus-visible,
+.root summary:focus-visible,
+.back:focus-visible {
+  outline: 2px solid var(--lamp);
+  outline-offset: 2px;
+}
+
+/* escena */
+.stage {
+  background: var(--room);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.scene {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.scene text {
+  font-family: var(--util);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+.figMe {
+  color: var(--lamp);
+}
+.figOther {
+  color: var(--rose);
+}
+.figHim {
+  color: var(--screen);
+}
+.pop {
+  animation: pop 0.45s ease both;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+.float {
+  animation: float 1.8s ease-in-out infinite alternate;
+}
+@keyframes pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0.3;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes float {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+/* qué pasó */
+.what {
+  padding: 0.7rem 0.85rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-top: 1px solid var(--line);
+}
+.what p {
+  margin: 0;
+}
+.thought {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1.3rem;
+  line-height: 1.15;
+  color: var(--lamp);
+  text-wrap: balance;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.chip {
+  font-family: var(--util);
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 0.05rem 0.5rem;
+  color: var(--muted);
+}
+.chipUp {
+  color: var(--lamp);
+  border-color: var(--lamp);
+}
+.chipHim {
+  color: var(--screen);
+  border-color: var(--screen);
+}
+.chipBad {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.note {
+  font-family: var(--util);
+  font-size: 0.75rem;
+  color: var(--lamp);
+}
+.follow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+.followRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.fbtn {
+  background: var(--raised);
+  border: 1px solid var(--rose);
+  color: var(--rose);
+  border-radius: 1rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-align: left;
+}
+.fbtn small {
+  font-family: var(--util);
+  font-size: 0.625rem;
+  color: var(--muted);
+  margin-left: 0.35rem;
+}
+
+/* marcadores */
+.status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.6rem 0.9rem;
+}
+.status > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.lvl {
+  font-family: var(--display);
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--lamp);
+}
+.bar {
+  height: 0.35rem;
+  background: var(--room);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 1rem;
+  background: var(--lamp);
+  transition: width 0.4s ease;
+}
+.his .bar i {
+  background: var(--screen);
+}
+.his input {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--line);
+  padding: 0;
+  width: 6.5rem;
+  min-width: 0;
+}
+.state {
+  font-family: var(--util);
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--screen);
+  white-space: nowrap;
+}
+.mini {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.15rem 0.4rem;
+  align-items: center;
+}
+.recs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.7rem;
+  font-family: var(--util);
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin: 0;
+}
+.recs b {
+  color: var(--text);
+  font-weight: 500;
+}
+.plain {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* panel de jugada */
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.8rem;
+}
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+.seg button,
+.tabs button,
+.who button {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.3rem;
+  cursor: pointer;
+  min-width: 0;
+}
+.seg button small {
+  display: block;
+  font-family: var(--util);
+  font-size: 0.5625rem;
+  color: var(--muted);
+}
+.root [aria-pressed='true'] {
+  border-color: var(--lamp) !important;
+  color: var(--lamp);
+  background: var(--raised) !important;
+}
+.who {
+  display: flex;
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+  scrollbar-width: none;
+}
+.who::-webkit-scrollbar {
+  display: none;
+}
+.who button {
+  white-space: nowrap;
+  flex: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: 1rem;
+}
+.root .who [aria-pressed='true'] {
+  border-color: var(--rose) !important;
+  color: var(--rose);
+}
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+.tabs button {
+  font-family: var(--util);
+  font-size: 0.75rem;
+  padding: 0.3rem 0;
+}
+.tabs button:disabled {
+  color: var(--line);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+.acts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.act {
+  background: var(--room);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  line-height: 1.25;
+}
+.act:hover {
+  border-color: var(--lamp);
+}
+.act:active {
+  transform: scale(0.98);
+}
+.act small {
+  font-family: var(--util);
+  font-size: 0.625rem;
+  color: var(--muted);
+}
+
+/* historial y pie */
+.history {
+  border-top: 1px solid var(--line);
+  padding-top: 0.7rem;
+}
+.history summary {
+  cursor: pointer;
+}
+.log {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.ghost {
+  font-family: var(--util);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.foot {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop,
+  .float {
+    animation: none;
+  }
+  .bar i {
+    transition: none;
+  }
+  .root {
+    transition: none;
+  }
+}

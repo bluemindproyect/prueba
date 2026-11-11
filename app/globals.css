@@ -1,0 +1,34 @@
+:root {
+  color-scheme: dark;
+  --night: #17121f;
+  --room: #221a2e;
+  --raised: #2c2239;
+  --line: #3b3049;
+  --text: #ece6f2;
+  --muted: #a798b8;
+  --lamp: #f0b35a;
+  --rose: #e88fb0;
+  --screen: #86c8ea;
+  --danger: #ee7d86;
+  --display: var(--font-display), Georgia, "Times New Roman", serif;
+  --prose: var(--font-prose), Georgia, "Times New Roman", serif;
+  --util: var(--font-util), ui-monospace, Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--night);
+  color: var(--text);
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+}
