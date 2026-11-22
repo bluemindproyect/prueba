@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { NODES, choose, ending, freshStory, reviveStory } from '@/lib/tres-anos/story';
-import type { Bubble, StoryState } from '@/lib/tres-anos/story';
+import { NODES, choose, ending, freshStory, reviveStory } from '@/features/tres-anos/lib/story';
+import type { Bubble, StoryState } from '@/features/tres-anos/lib/story';
 import { cn } from '@/lib/cn';
 import { usePersistentState } from '@/lib/use-persistent-state';
 import styles from './story.module.css';

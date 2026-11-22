@@ -1,6 +1,6 @@
-import { LEVELS, STATES } from '@/lib/a-sus-espaldas/data';
-import { level, stage } from '@/lib/a-sus-espaldas/engine';
-import type { GameState } from '@/lib/a-sus-espaldas/types';
+import { LEVELS, STATES } from '@/features/a-sus-espaldas/lib/data';
+import { level, stage } from '@/features/a-sus-espaldas/lib/engine';
+import type { GameState } from '@/features/a-sus-espaldas/lib/types';
 import { cn } from '@/lib/cn';
 import styles from './game.module.css';
 

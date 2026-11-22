@@ -21,27 +21,32 @@ Necesita Node 18.18 o más nuevo. Las fuentes (Instrument Serif, Literata, DM Mo
 ## Estructura
 
 ```
-app/                       rutas (home, /a-sus-espaldas, /tres-anos)
-components/
-  a-sus-espaldas/          interfaz del juego principal
-    Game.tsx               contenedor: estado y guardado
-    Scene.tsx, Figure.tsx  escena con los muñequitos (SVG)
-    LivePanel.tsx          pulso, ánimo, confusión y pensamientos en vivo
-    Sparkline.tsx          gráfica del pulso
-    TurnResult.tsx         lo que pasó y el combo
-    StatusPanel.tsx        marcadores
-    Deck.tsx               modo, persona, pestañas por nivel y acciones
-  tres-anos/               interfaz de la historia
-lib/
-  a-sus-espaldas/
-    data.ts                acciones, personas, textos y niveles (aquí se agrega contenido)
-    engine.ts              reglas de cada jugada, funciones puras sin React
-    live.ts                tiempo real: pulso, tensión, pensamientos y movimientos de él
-    types.ts
-  tres-anos/story.ts       escenas, decisiones y final
-  use-persistent-state.ts  estado guardado en localStorage
-juegos/                    versión original en HTML de un solo archivo
+src/
+  app/                       rutas (home, /a-sus-espaldas, /tres-anos)
+  features/
+    a-sus-espaldas/
+      components/            interfaz del juego principal
+        Game.tsx             contenedor: estado y guardado
+        Scene.tsx, Figure.tsx  escena con los muñequitos (SVG)
+        LivePanel.tsx        pulso, ánimo, confusión y pensamientos en vivo
+        Sparkline.tsx        gráfica del pulso
+        TurnResult.tsx       lo que pasó y el combo
+        StatusPanel.tsx      marcadores
+        Deck.tsx             modo, persona, pestañas por nivel y acciones
+      lib/
+        data.ts              acciones, personas, textos y niveles (aquí se agrega contenido)
+        engine.ts            reglas de cada jugada, funciones puras sin React
+        live.ts              tiempo real: pulso, tensión, pensamientos y movimientos de él
+        stage.ts, types.ts
+    tres-anos/
+      components/Story.tsx   interfaz de la historia
+      lib/story.ts           escenas, decisiones y final
+  lib/
+    cn.ts                    utilidad para clases
+    use-persistent-state.ts  estado guardado en localStorage
 ```
+
+El alias `@/` apunta a `src/`.
 
 ## Tiempo real
 
@@ -56,7 +61,7 @@ juegos/                    versión original en HTML de un solo archivo
 
 ## Agregar contenido
 
-- **Una acción nueva**: agrega una fila a su nivel en `lib/a-sus-espaldas/data.ts` con `[id, botón, frase, lo que pasó, { p, e, clue }]`. `p` es puerta cerrada, `e` es que él participa sin saber, `clue` es lo que le queda sin cuadrar. La satisfacción y el riesgo salen del nivel y de la posición dentro de él.
+- **Una acción nueva**: agrega una fila a su nivel en `src/features/a-sus-espaldas/lib/data.ts` con `[id, botón, frase, lo que pasó, { p, e, clue }]`. `p` es puerta cerrada, `e` es que él participa sin saber, `clue` es lo que le queda sin cuadrar. La satisfacción y el riesgo salen del nivel y de la posición dentro de él.
 - **Una persona nueva**: agrega un objeto a `TARGETS` en el mismo archivo.
-- **Un nivel nuevo**: agrega el mínimo de satisfacción a `LEVELS`, valores en `BASE_SAT` y `BASE_RISK`, y un `level(n, [...])` en `RAW_ACTS`. La pestaña sale sola (en `game.module.css` ajusta las columnas de `.tabs`).
-- **Una escena nueva de Tres Años**: agrega un nodo a `NODES` en `lib/tres-anos/story.ts` y apunta el `next` del anterior.
+- **Un nivel nuevo**: agrega el mínimo de satisfacción a `LEVELS`, valores en `BASE_SAT` y `BASE_RISK`, y un `level(n, [...])` en `RAW_ACTS`. La pestaña sale sola (en `components/game.module.css` ajusta las columnas de `.tabs`).
+- **Una escena nueva de Tres Años**: agrega un nodo a `NODES` en `src/features/tres-anos/lib/story.ts` y apunta el `next` del anterior.

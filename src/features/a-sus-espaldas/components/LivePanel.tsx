@@ -1,7 +1,7 @@
-import { MOOD_LABEL } from '@/lib/a-sus-espaldas/data';
-import { displayName } from '@/lib/a-sus-espaldas/engine';
-import { isPresent } from '@/lib/a-sus-espaldas/live';
-import type { GameState } from '@/lib/a-sus-espaldas/types';
+import { MOOD_LABEL } from '@/features/a-sus-espaldas/lib/data';
+import { displayName } from '@/features/a-sus-espaldas/lib/engine';
+import { isPresent } from '@/features/a-sus-espaldas/lib/live';
+import type { GameState } from '@/features/a-sus-espaldas/lib/types';
 import { cn } from '@/lib/cn';
 import { Sparkline } from './Sparkline';
 import styles from './game.module.css';

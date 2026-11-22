@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Story from '@/components/tres-anos/Story';
+import Story from '@/features/tres-anos/components/Story';
 
 export const metadata: Metadata = { title: 'Tres Años' };
 

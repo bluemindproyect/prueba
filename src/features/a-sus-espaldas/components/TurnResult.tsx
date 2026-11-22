@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
-import { displayName, findAct, risk } from '@/lib/a-sus-espaldas/engine';
-import type { ChipTone, GameState } from '@/lib/a-sus-espaldas/types';
+import { displayName, findAct, risk } from '@/features/a-sus-espaldas/lib/engine';
+import type { ChipTone, GameState } from '@/features/a-sus-espaldas/lib/types';
 import styles from './game.module.css';
 
 const CHIP_TONE: Record<ChipTone, string | undefined> = {

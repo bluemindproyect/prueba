@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { freshState, play, reviveState, setMode, setName, setTab, setTarget, tick } from '@/lib/a-sus-espaldas/engine';
-import type { GameState } from '@/lib/a-sus-espaldas/types';
+import { freshState, play, reviveState, setMode, setName, setTab, setTarget, tick } from '@/features/a-sus-espaldas/lib/engine';
+import type { GameState } from '@/features/a-sus-espaldas/lib/types';
 import { cn } from '@/lib/cn';
 import { usePersistentState } from '@/lib/use-persistent-state';
 import { Deck } from './Deck';

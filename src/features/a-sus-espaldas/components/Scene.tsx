@@ -1,6 +1,6 @@
-import { displayName, findAct, findTarget, stage } from '@/lib/a-sus-espaldas/engine';
-import { isPresent } from '@/lib/a-sus-espaldas/live';
-import type { GameState, Mood } from '@/lib/a-sus-espaldas/types';
+import { displayName, findAct, findTarget, stage } from '@/features/a-sus-espaldas/lib/engine';
+import { isPresent } from '@/features/a-sus-espaldas/lib/live';
+import type { GameState, Mood } from '@/features/a-sus-espaldas/lib/types';
 import { Figure } from './Figure';
 import type { FigureFace } from './Figure';
 import styles from './game.module.css';

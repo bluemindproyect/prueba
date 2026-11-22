@@ -1,6 +1,6 @@
-import { ACTS, LEVELS, MODES, TARGETS } from '@/lib/a-sus-espaldas/data';
-import { findTarget, gainPreview, level, playable, risk } from '@/lib/a-sus-espaldas/engine';
-import type { GameState, ModeId } from '@/lib/a-sus-espaldas/types';
+import { ACTS, LEVELS, MODES, TARGETS } from '@/features/a-sus-espaldas/lib/data';
+import { findTarget, gainPreview, level, playable, risk } from '@/features/a-sus-espaldas/lib/engine';
+import type { GameState, ModeId } from '@/features/a-sus-espaldas/lib/types';
 import styles from './game.module.css';
 
 interface DeckProps {

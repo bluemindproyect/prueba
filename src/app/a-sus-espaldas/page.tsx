@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Game from '@/components/a-sus-espaldas/Game';
+import Game from '@/features/a-sus-espaldas/components/Game';
 
 export const metadata: Metadata = { title: 'A Sus Espaldas' };
 
