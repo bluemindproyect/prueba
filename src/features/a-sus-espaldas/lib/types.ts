@@ -3,6 +3,9 @@ export type ModeId = 'ausente' | 'cerca' | 'frente';
 /** Minijuegos que reemplazan la resolución automática de una acción. */
 export type MiniId = 'llamada';
 
+/** Qué quieres lograr en un minijuego: que no se note, o que él lo sienta. */
+export type MiniIntent = 'ocultar' | 'herir';
+
 /** Lo que él termina entendiendo después de una llamada. */
 export type CallVerdict = 'limpio' | 'dudas' | 'sabe';
 

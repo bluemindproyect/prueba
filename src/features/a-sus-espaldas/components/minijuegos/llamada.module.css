@@ -277,3 +277,65 @@
     transition: none;
   }
 }
+
+/* Elegir qué quieres lograr */
+.choose {
+  width: 100%;
+  max-width: 30rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 1.5rem max(16px, env(safe-area-inset-right, 0px));
+}
+.ask {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-style: italic;
+}
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 1.1rem;
+  border: 2px solid var(--line);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--prose);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.choice strong {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.4rem;
+}
+.choice small {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.choice.ocultar:active {
+  border-color: var(--screen);
+}
+.choice.herir {
+  border-color: var(--rose);
+}
+.choice.herir:active {
+  background: #3a2433;
+}
+
+/* Cuánto lo siente él, y la franja de temblor en la aguja */
+.hurtFill {
+  height: 100%;
+  background: var(--rose);
+}
+.dial .zBand {
+  stroke: var(--rose);
+  stroke-width: 4;
+  opacity: 0.95;
+  transform: translateY(0);
+}

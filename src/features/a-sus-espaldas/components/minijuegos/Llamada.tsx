@@ -17,6 +17,7 @@ import {
   stepCall,
 } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
 import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
+import type { MiniIntent } from '@/features/a-sus-espaldas/lib/types';
 import { cn } from '@/lib/cn';
 import styles from './llamada.module.css';
 
@@ -41,6 +42,15 @@ function arc(a: number, b: number): string {
 
 const SAFE_DEG = SAFE * MAX_ANGLE;
 const LOUD_DEG = LOUD * MAX_ANGLE;
+
+const INTENTS: ReadonlyArray<{ id: MiniIntent; title: string; hint: string }> = [
+  { id: 'ocultar', title: 'Que no se note', hint: 'Mantén la aguja en el centro. Que no oiga nada raro.' },
+  {
+    id: 'herir',
+    title: 'Que lo sienta',
+    hint: 'Deja que la aguja suba a la franja rosa mientras hablas: que oiga tu voz temblar. Cuanto más lo sienta, más ganas. Si te pasas, lo entiende todo.',
+  },
+];
 
 const END_TEXT = {
   limpio: 'Cuelga tranquilo.',
@@ -80,6 +90,8 @@ function HoldButton(props: {
 }
 
 export function Llamada({ name, onFinish }: LlamadaProps) {
+  // Primero eliges qué quieres lograr; la llamada empieza después.
+  const [intent, setIntent] = useState<MiniIntent | null>(null);
   const [s, setS] = useState(() => startCall());
   const [talk, setTalk] = useState(false);
   const [press, setPress] = useState(false);
@@ -103,6 +115,7 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
   };
 
   useEffect(() => {
+    if (!intent) return;
     reduceRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let raf = 0;
     let last = performance.now();
@@ -114,7 +127,12 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [intent]);
+
+  const choose = (id: MiniIntent) => {
+    setS(startCall(undefined, id));
+    setIntent(id);
+  };
 
   // Teclado, para probarlo en la computadora: ← nivelar, → hablar.
   useEffect(() => {
@@ -162,7 +180,35 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
   const himText = fillName(line.him, name);
   const himShown = himText.slice(0, Math.floor(himText.length * Math.min(1, (s.phaseT / HIM_SECS) * 1.3)));
   const said = Math.floor(s.chars);
-  const verdict = callResult(s).verdict;
+  const result = callResult(s);
+  const verdict = result.verdict;
+  const hurting = s.intent === 'herir';
+  const endText =
+    hurting && result.hurt >= 60
+      ? 'Cuelga sin decir nada. Se queda con tu voz en la cabeza.'
+      : hurting && result.hurt >= 25
+        ? 'Cuelga pensativo. Algo se le quedó.'
+        : hurting && verdict !== 'sabe'
+          ? 'Cuelga tranquilo. No sintió nada.'
+          : END_TEXT[verdict];
+
+  if (!intent) {
+    return (
+      <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Llamada de ${name}`}>
+        <div className={styles.choose}>
+          <p className={styles.kicker}>Llamada entrante</p>
+          <h2 className={styles.who}>{name}</h2>
+          <p className={styles.ask}>Antes de contestar: ¿qué quieres que pase?</p>
+          {INTENTS.map((opt) => (
+            <button key={opt.id} type="button" className={cn(styles.choice, styles[opt.id])} onClick={() => choose(opt.id)}>
+              <strong>{opt.title}</strong>
+              <small>{opt.hint}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Llamada de ${name}`}>
@@ -190,6 +236,15 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
           </div>
         </div>
 
+        {hurting && (
+          <div className={styles.meter} aria-label="Cuánto lo siente">
+            <span className={styles.meterLabel}>Cuánto lo siente</span>
+            <div className={styles.track}>
+              <div className={styles.hurtFill} style={{ width: `${s.hurt}%` }} />
+            </div>
+          </div>
+        )}
+
         <div className={styles.chat} aria-live="polite">
           {s.log.slice(-4).map((l, i) => (
             <p key={`${s.log.length}-${i}`} className={cn(styles.line, l.who === 'him' ? styles.him : styles.you, l.heard && styles.heard, l.cut && styles.cut)}>
@@ -205,7 +260,7 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
           )}
           {s.phase === 'you' && (
             <div className={cn(styles.line, styles.you, styles.now)}>
-              <span>Tú · mantén «Hablar»</span>
+              <span>{hurting ? 'Tú · mantén «Hablar» y deja que tiemble' : 'Tú · mantén «Hablar»'}</span>
               <p className={styles.reply}>
                 <em>{line.you.slice(0, said)}</em>
                 {line.you.slice(said, len)}
@@ -215,7 +270,7 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
               </div>
             </div>
           )}
-          {done && <p className={cn(styles.line, styles.end)}>{END_TEXT[verdict]}</p>}
+          {done && <p className={cn(styles.line, styles.end)}>{endText}</p>}
         </div>
 
         <svg className={styles.dial} viewBox="0 0 200 112" role="img" aria-label="Aguja de nivel">
@@ -224,6 +279,12 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
           <path d={arc(-SAFE_DEG, SAFE_DEG)} className={styles.zSafe} />
           <path d={arc(SAFE_DEG, LOUD_DEG)} className={styles.zWarn} />
           <path d={arc(LOUD_DEG, MAX_ANGLE)} className={styles.zLoud} />
+          {hurting && (
+            <>
+              <path d={arc(-LOUD_DEG, -SAFE_DEG)} className={styles.zBand} />
+              <path d={arc(SAFE_DEG, LOUD_DEG)} className={styles.zBand} />
+            </>
+          )}
           <g transform={`rotate(${angle.toFixed(1)} ${CX} ${CY})`}>
             <line x1={CX} y1={CY} x2={CX} y2={CY - R + 8} className={styles.needle} />
           </g>

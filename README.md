@@ -79,6 +79,12 @@ Algunas acciones se resuelven jugando un minijuego en vez de al instante. Todo g
 
 - **Llamada** (acción `llamada`, solo cuando él no está en el cuarto): él llama mientras estás con el otro. Con el botón derecho mantienes apretado para hablar y contestar sus frases completas; con el izquierdo nivelas una aguja que sube sola con el ritmo. Si la aguja se va (o te pasas de más), se nota, y más si estás hablando. Termina en `limpio` (te creyó), `dudas` (le queda algo sin cuadrar) o `sabe` (lo oyó todo). En teclado: ← nivelar, → hablar.
 
+**Intención.** Antes de cada minijuego eliges qué quieres lograr:
+- *Que no se note* (`ocultar`): mantener la aguja en el centro.
+- *Que lo sienta* (`herir`): dejar que la aguja suba a la franja rosa mientras hablas, para que él oiga tu voz temblar. Cuanto más y más tiempo, más le duele (humillación, confianza, tensión y sospecha de él) y **más satisfacción ganas, hasta el doble**. Si te pasas, lo entiende todo.
+
+El mismo esquema (`MiniIntent`) se usará en los demás minijuegos.
+
 Para ligar otro minijuego a una acción: agrega `mini: 'id'` a sus marcas en `data.ts`, el id a `MiniId` en `types.ts`, su lógica en `lib/minijuegos/`, su interfaz en `components/minijuegos/`, y su resolución en `engine.ts` (como `playCall`).
 
 ## Agregar contenido

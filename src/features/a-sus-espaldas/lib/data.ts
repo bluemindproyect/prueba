@@ -614,3 +614,17 @@ export const CALL_THOUGHTS: Record<CallVerdict, readonly string[]> = {
     'Seguí hablando como si nada. No sé de dónde saqué la voz.',
   ],
 };
+
+/** Cuando lo hiciste a propósito: lo que piensa él según cuánto lo sintió. */
+export const CALL_HURT_THOUGHTS: Record<'rozado' | 'herido', readonly string[]> = {
+  rozado: [
+    'Su voz tenía algo raro. No supe qué, y no me atreví a preguntar.',
+    'Le temblaba un poco la voz. Seguro es el frío o el cansancio.',
+    'Dijo que estaba bien pero no sonaba bien. Dejé que lo dijera.',
+  ],
+  herido: [
+    'Su voz temblaba y no era de frío. Esa respiración la conozco de otro lado.',
+    'Le pregunté si estaba bien y dijo que sí. Nunca la había oído tan lejos.',
+    'Me quedé con el teléfono pegado a la oreja, escuchando lo que no quería escuchar.',
+  ],
+};

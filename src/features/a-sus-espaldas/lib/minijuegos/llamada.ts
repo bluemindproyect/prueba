@@ -1,4 +1,4 @@
-import type { CallVerdict } from '../types';
+import type { CallVerdict, MiniIntent } from '../types';
 
 /**
  * Minijuego «Llamada»: él llama mientras estás con el otro.
@@ -6,6 +6,12 @@ import type { CallVerdict } from '../types';
  * - Botón derecho (hablar): mantenlo apretado para contestar. Si lo sueltas, dejas de hablar.
  * - Botón izquierdo (nivelar): una aguja sube sola con el ritmo de lo que pasa y debes
  *   mantenerla en el centro. Si no la bajas, se nota; si aprietas de más, se va al otro lado.
+ *
+ * Antes de empezar eliges qué quieres lograr:
+ * - `ocultar`: que no se note nada.
+ * - `herir`: que él oiga tu voz temblar. Eso se logra dejando que la aguja suba a la
+ *   franja de temblor mientras hablas. Cuanto más y más tiempo, más lo siente él, y más
+ *   ganas tú. Si te pasas, se da cuenta de todo.
  *
  * Todo se mide desde él: cuánto alcanza a oír, qué le queda y qué entiende.
  * Este archivo es lógica pura, sin React.
@@ -49,6 +55,11 @@ const DAMPING = 2.5;
 export const SAFE = 0.3; // dentro de esto no se nota
 export const LOUD = 0.6; // pasado esto se oye claro
 
+// En `herir`: cuánto sube «lo que siente él» por segundo, según la zona de la aguja.
+const HURT_SPEAKING = { warn: 9, loud: 14 } as const;
+const HURT_LISTENING = { warn: 2, loud: 4 } as const;
+const HURT_DECAY = 0.8;
+
 export type CallPhase = 'him' | 'you' | 'beat' | 'done';
 
 export interface CallLine {
@@ -61,6 +72,7 @@ export interface CallLine {
 }
 
 export interface CallState {
+  intent: MiniIntent;
   /** segundos desde que empezó */
   t: number;
   /** -1 (te pasaste) a 1 (se desbordó). 0 es el centro */
@@ -80,6 +92,8 @@ export interface CallState {
   /** 0 a 100: cuánto alcanza a oír él */
   exposure: number;
   peak: number;
+  /** 0 a 100: cuánto lo siente él (solo cuenta con la intención `herir`) */
+  hurt: number;
   /** cuántas veces dijo que oyó algo */
   heard: number;
   /** cuántas veces soltaste el botón con la frase a medias */
@@ -99,6 +113,9 @@ export interface CallInput {
 }
 
 export interface CallResult {
+  intent: MiniIntent;
+  /** cuánto lo sintió él (0 a 100). Siempre 0 con la intención `ocultar` */
+  hurt: number;
   verdict: CallVerdict;
   /** cuánto alcanzó a oír al final (0 a 100) */
   exposure: number;
@@ -114,8 +131,9 @@ export type Rng = () => number;
 
 export const fillName = (text: string, name: string): string => text.replace(/\{n\}/g, name);
 
-export function startCall(rng: Rng = Math.random): CallState {
+export function startCall(rng: Rng = Math.random, intent: MiniIntent = 'ocultar'): CallState {
   return {
+    intent,
     t: 0,
     needle: 0,
     vel: 0,
@@ -128,6 +146,7 @@ export function startCall(rng: Rng = Math.random): CallState {
     silence: 0,
     exposure: 0,
     peak: 0,
+    hurt: 0,
     heard: 0,
     cuts: 0,
     missed: 0,
@@ -200,9 +219,18 @@ export function stepCall(prev: CallState, input: CallInput, dt: number): CallSta
   // Lo que él oye: sube cuando la aguja se va y más si estás hablando; baja si todo está parejo.
   let leak = zoneOf(s.needle) === 'loud' ? 12 : zoneOf(s.needle) === 'warn' ? 4 : 0;
   if (s.speaking) leak *= 1.8;
+  // Si lo haces a propósito, lo que él oye es un temblor que no sabe ubicar: se nota menos de golpe.
+  if (s.intent === 'herir') leak *= 0.5;
   if (answering && !s.speaking && s.chars < len && s.silence > 3) leak += 3;
   s.exposure = clamp(s.exposure + (leak > 0 ? leak : -1.2) * dtc, 0, 100);
   if (s.exposure > s.peak) s.peak = s.exposure;
+
+  // Que lo sienta: la voz temblando (aguja fuera del centro) hace daño, más si estás hablando.
+  if (s.intent === 'herir') {
+    const zone = zoneOf(s.needle);
+    const rates = s.speaking ? HURT_SPEAKING : HURT_LISTENING;
+    s.hurt = clamp(s.hurt + (zone === 'safe' ? -HURT_DECAY : rates[zone]) * dtc, 0, 100);
+  }
 
   let log = s.log;
   while (s.heard < HEAR_AT.length && s.exposure >= HEAR_AT[s.heard]) {
@@ -254,6 +282,8 @@ export function callResult(s: CallState): CallResult {
   const score = Math.max(s.exposure, s.peak * 0.8);
   const verdict: CallVerdict = s.hangup || score >= 60 ? 'sabe' : score >= 25 ? 'dudas' : 'limpio';
   return {
+    intent: s.intent,
+    hurt: s.intent === 'herir' ? Math.round(s.hurt) : 0,
     verdict,
     exposure: Math.round(s.exposure),
     peak: Math.round(s.peak),

@@ -1,5 +1,6 @@
 import {
   AWAY_THOUGHTS,
+  CALL_HURT_THOUGHTS,
   CALL_THOUGHTS,
   CAUGHT_THOUGHTS,
   DOING,
@@ -149,9 +150,17 @@ export function reactToAct(state: GameState, act: Act, seen: boolean, rng: Rng):
  * sí le afecta aunque no esté en el cuarto: está al teléfono. Modifica `state.live`,
  * que debe ser una copia, y se llama después de actualizar `state.s` y `state.h`.
  */
-export function reactToCall(state: GameState, act: Act, verdict: CallVerdict, rng: Rng): void {
+export function reactToCall(state: GameState, act: Act, verdict: CallVerdict, hurt: number, rng: Rng): void {
   const live = state.live;
-  if (verdict === 'limpio') {
+  if (hurt >= 25) {
+    // Lo hiciste a propósito y lo sintió: lo que más pesa es el temblor de la voz.
+    const strong = hurt >= 60;
+    spike(live, (strong ? 28 : 14) + hurt * 0.2);
+    live.confusion = Math.min(100, live.confusion + (strong ? 16 : 8));
+    if (verdict !== 'sabe') addPuzzle(live, 'tu voz temblando en la llamada');
+    push(live, 'thought', pickOne(strong ? CALL_HURT_THOUGHTS.herido : CALL_HURT_THOUGHTS.rozado, rng), strong);
+    if (verdict === 'sabe') push(live, 'thought', pickOne(CALL_THOUGHTS.sabe, rng), true);
+  } else if (verdict === 'limpio') {
     spike(live, -12);
     live.confusion = Math.max(0, live.confusion - 5);
     push(live, 'thought', pickOne(CALL_THOUGHTS.limpio, rng));

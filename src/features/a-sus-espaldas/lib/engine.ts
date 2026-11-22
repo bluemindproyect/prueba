@@ -288,6 +288,13 @@ const CALL_TAIL: Record<CallVerdict, string> = {
   sabe: '{n} escuchó lo que no debía. No dijo nada hasta que colgó.',
 };
 
+const CALL_TAIL_HURT = [
+  '{n} nota que algo no está bien en tu voz. Pregunta si estás bien y se queda con la duda.',
+  '{n} se queda callado. Oyó tu voz temblar y sabe que algo le duele, pero no se atreve a preguntar qué.',
+] as const;
+
+const CALL_TAIL_FAILED = 'Tu voz no tembló lo suficiente. {n} no notó nada y cuelga tranquilo.';
+
 const CALL_CHIP: Record<CallVerdict, string> = {
   limpio: 'te creyó',
   dudas: 'le quedó una duda',
@@ -296,8 +303,8 @@ const CALL_CHIP: Record<CallVerdict, string> = {
 
 /**
  * Resuelve una acción con la llamada ya jugada. Todo gira alrededor de él: lo que
- * oyó decide su sospecha, su confianza y cuánto lo humillaste. La satisfacción no
- * depende del minijuego.
+ * oyó decide su sospecha, su confianza y cuánto lo humillaste. Si elegiste que lo
+ * sintiera (`herir`), cuánto le dolió también sube tu satisfacción, hasta el doble.
  */
 export function playCall(
   prev: GameState,
@@ -318,10 +325,15 @@ export function playCall(
   const { verdict } = result;
   const name = displayName(s);
   const stale = act.lvl < before - 1;
-  const gain = Math.max(1, Math.round(act.sat * target.ms * (stale ? 0.5 : 1) * (1 + 0.15 * n)));
+  const hurting = result.intent === 'herir';
+  const k = hurting ? result.hurt / 100 : 0; // qué tanto lo sintió, de 0 a 1
+  // Que él lo sienta te da más satisfacción: hasta el doble.
+  const gain = Math.max(1, Math.round(act.sat * target.ms * (stale ? 0.5 : 1) * (1 + 0.15 * n) * (1 + k)));
   const short = fill(act.txt, name, target);
   const det = fill(act.det, name, target);
-  const line = `${short}. ${det} ${fill(CALL_TAIL[verdict], name)}`;
+  let tail = CALL_TAIL[verdict];
+  if (hurting && verdict !== 'sabe') tail = k >= 0.6 ? CALL_TAIL_HURT[1] : k >= 0.25 ? CALL_TAIL_HURT[0] : CALL_TAIL_FAILED;
+  const line = `${short}. ${det} ${fill(tail, name)}`;
 
   const seen = verdict === 'sabe';
   const stageNow = stage(s.h);
@@ -339,6 +351,17 @@ export function playCall(
     ds = 22;
     dc = -14;
     dh = act.hum * target.mh * 0.7;
+  }
+
+  if (hurting) {
+    // Lo sintió: si tembló lo bastante, ya no se queda tranquilo aunque no sepa por qué.
+    if (k >= 0.25 && verdict === 'limpio') {
+      ds = 0;
+      dc = 0;
+    }
+    dh += act.hum * target.mh * 0.8 * k;
+    dc -= 12 * k;
+    ds += 8 * k;
   }
 
   s.cheat++;
@@ -363,12 +386,21 @@ export function playCall(
   const stageAfter = stage(s.h);
 
   const bpm0 = s.live.bpm;
-  reactToCall(s, act, verdict, rng);
+  reactToCall(s, act, verdict, hurting ? result.hurt : 0, rng);
 
-  const chips: Chip[] = [
-    { text: CALL_CHIP[verdict], tone: verdict === 'limpio' ? 'up' : verdict === 'dudas' ? 'bad' : 'him' },
-    { text: `+${gain} satisfacción`, tone: 'up' },
-  ];
+  const chips: Chip[] = [];
+  // Si lo hiciste a propósito, lo que importa es cuánto lo sintió; solo se avisa si se dio cuenta de todo.
+  if (!hurting || verdict === 'sabe') {
+    chips.push({ text: CALL_CHIP[verdict], tone: verdict === 'limpio' ? 'up' : verdict === 'dudas' ? 'bad' : 'him' });
+  }
+  chips.push({ text: `+${gain} satisfacción`, tone: 'up' });
+  if (hurting) {
+    chips.push(
+      result.hurt >= 25
+        ? { text: `lo sintió ${result.hurt}%`, tone: 'him' }
+        : { text: 'no logró sentirlo', tone: '' },
+    );
+  }
   if (n > 0) chips.push({ text: `combo ×${n + 1}`, tone: 'up' });
   if (result.heard > 0) chips.push({ text: `oyó ruidos ×${result.heard}`, tone: 'bad' });
   if (result.cuts + result.missed > 0) chips.push({ text: `te cortaste ×${result.cuts + result.missed}`, tone: 'bad' });
@@ -399,7 +431,13 @@ export function playCall(
     follow: seen ? [] : followUps(act, after, s.pick.mode, rng),
   };
 
-  const how = verdict === 'limpio' ? 'llamada, te creyó' : verdict === 'dudas' ? 'llamada, le quedó una duda' : 'llamada, lo oyó todo';
+  const how = hurting
+    ? `llamada, lo sintió ${result.hurt}%`
+    : verdict === 'limpio'
+      ? 'llamada, te creyó'
+      : verdict === 'dudas'
+        ? 'llamada, le quedó una duda'
+        : 'llamada, lo oyó todo';
   s.log.unshift(`Día ${s.turn} · ${short} (${how}).`);
   if (s.log.length > 40) s.log.length = 40;
   return s;
