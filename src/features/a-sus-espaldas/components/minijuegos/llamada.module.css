@@ -1,0 +1,279 @@
+/* Minijuego de la llamada: toda la pantalla, con la escena balanceándose según la aguja. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--night);
+  color: var(--text);
+  font-family: var(--prose);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.sway {
+  width: 100%;
+  max-width: 30rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: calc(0.9rem + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    calc(0.9rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  transform-origin: 50% 60%;
+  will-change: transform;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.kicker {
+  margin: 0;
+  font-family: var(--util);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.who {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+.pulse {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--util);
+  font-size: 0.9rem;
+  color: var(--screen);
+}
+.beat {
+  display: inline-block;
+  animation: beat 1s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.35);
+  }
+  30% {
+    transform: scale(1);
+  }
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.meterLabel {
+  font-family: var(--util);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.track {
+  position: relative;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  background: var(--screen);
+}
+.fillHot {
+  background: var(--danger);
+}
+.tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.chat {
+  flex: 1;
+  min-height: 9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.line {
+  margin: 0;
+  max-width: 88%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.8rem;
+  background: var(--raised);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+.line > span {
+  display: block;
+  margin-bottom: 0.1rem;
+  font-family: var(--util);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.him {
+  align-self: flex-start;
+  border-left: 3px solid var(--screen);
+}
+.you {
+  align-self: flex-end;
+  border-right: 3px solid var(--lamp);
+}
+.heard {
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+.cut {
+  opacity: 0.7;
+  font-style: italic;
+}
+.now {
+  background: var(--room);
+  border: 1px solid var(--line);
+}
+.reply {
+  margin: 0;
+  color: var(--muted);
+}
+.reply em {
+  font-style: normal;
+  color: var(--text);
+}
+.window {
+  margin-top: 0.4rem;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.window i {
+  display: block;
+  height: 100%;
+  background: var(--lamp);
+}
+.end {
+  align-self: center;
+  background: transparent;
+  text-align: center;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.dial {
+  width: min(100%, 17rem);
+  align-self: center;
+  overflow: visible;
+}
+.dial path {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: butt;
+}
+.zSafe {
+  stroke: #6fbf8e;
+}
+.zWarn {
+  stroke: var(--lamp);
+}
+.zLoud {
+  stroke: var(--danger);
+}
+.needle {
+  stroke: var(--text);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.hub {
+  fill: var(--text);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.hold {
+  min-height: 7.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.75rem;
+  border-radius: 1.1rem;
+  border: 2px solid var(--line);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--prose);
+  text-align: center;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.08s ease, transform 0.08s ease;
+}
+.hold strong {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.5rem;
+}
+.hold small {
+  font-family: var(--util);
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+.left.holdOn {
+  background: #2f4a3c;
+  border-color: #6fbf8e;
+  transform: scale(0.97);
+}
+.right.holdOn {
+  background: #4a3a22;
+  border-color: var(--lamp);
+  transform: scale(0.97);
+}
+.keys {
+  margin: 0;
+  text-align: center;
+  font-family: var(--util);
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+@media (pointer: coarse) {
+  .keys {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .beat {
+    animation: none;
+  }
+  .hold {
+    transition: none;
+  }
+}

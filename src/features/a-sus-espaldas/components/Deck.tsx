@@ -1,5 +1,5 @@
 import { ACTS, LEVELS, MODES, TARGETS } from '@/features/a-sus-espaldas/lib/data';
-import { findTarget, gainPreview, level, playable, risk } from '@/features/a-sus-espaldas/lib/engine';
+import { findTarget, gainPreview, level, opensMini, playable, risk } from '@/features/a-sus-espaldas/lib/engine';
 import type { GameState, ModeId } from '@/features/a-sus-espaldas/lib/types';
 import styles from './game.module.css';
 
@@ -65,11 +65,13 @@ export function Deck({ state, onMode, onTarget, onTab, onPlay }: DeckProps) {
           const ok = playable(act, state.pick.mode, state.sat);
           const tag = !ok
             ? 'necesita que esté cerca'
-            : act.lvl < lv - 1
-              ? 'ya no te llena'
-              : state.pick.mode === 'cerca'
-                ? `riesgo ${risk(act, state.s, 0)}%`
-                : `+${gainPreview(act, target, state.pick.mode)}`;
+            : opensMini(act, state.pick.mode)
+              ? 'minijuego'
+              : act.lvl < lv - 1
+                ? 'ya no te llena'
+                : state.pick.mode === 'cerca'
+                  ? `riesgo ${risk(act, state.s, 0)}%`
+                  : `+${gainPreview(act, target, state.pick.mode)}`;
           return (
             <button key={act.id} type="button" className={styles.act} disabled={!ok} onClick={() => onPlay(act.id)}>
               <span>{act.label}</span>

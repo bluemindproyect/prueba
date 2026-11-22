@@ -1,5 +1,11 @@
 export type ModeId = 'ausente' | 'cerca' | 'frente';
 
+/** Minijuegos que reemplazan la resolución automática de una acción. */
+export type MiniId = 'llamada';
+
+/** Lo que él termina entendiendo después de una llamada. */
+export type CallVerdict = 'limpio' | 'dudas' | 'sabe';
+
 export interface Mode {
   id: ModeId;
   label: string;
@@ -37,6 +43,8 @@ export interface Act {
   clue?: string;
   /** lo que pasó, dado a entender (versión en la que él no sabe nada) */
   det: string;
+  /** si está, jugar esta acción abre un minijuego (solo cuando él no está en el cuarto) */
+  mini?: MiniId;
 }
 
 export type ChipTone = '' | 'up' | 'him' | 'bad';

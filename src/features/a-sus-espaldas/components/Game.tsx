@@ -2,11 +2,27 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { freshState, play, reviveState, setMode, setName, setTab, setTarget, tick } from '@/features/a-sus-espaldas/lib/engine';
+import {
+  displayName,
+  findAct,
+  freshState,
+  opensMini,
+  play,
+  playCall,
+  playable,
+  reviveState,
+  setMode,
+  setName,
+  setTab,
+  setTarget,
+  tick,
+} from '@/features/a-sus-espaldas/lib/engine';
+import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
 import type { GameState } from '@/features/a-sus-espaldas/lib/types';
 import { cn } from '@/lib/cn';
 import { usePersistentState } from '@/lib/use-persistent-state';
 import { Deck } from './Deck';
+import { Llamada } from './minijuegos/Llamada';
 import { LiveBar, LivePanel } from './LivePanel';
 import { Scene } from './Scene';
 import { StatusPanel } from './StatusPanel';
@@ -19,19 +35,35 @@ export default function Game() {
   const [state, setState, ready] = usePersistentState<GameState>(STORAGE_KEY, freshState, reviveState);
   const [confirmReset, setConfirmReset] = useState(false);
   const [paused, setPaused] = useState(false);
+  // Minijuego en curso: la acción que lo abrió y si venía de un combo.
+  const [call, setCall] = useState<{ actId: string; chained: boolean } | null>(null);
 
   // Tiempo real: un segundo a la vez. Se detiene si pausas o si cambias de pestaña.
   useEffect(() => {
-    if (!ready || paused) return;
+    if (!ready || paused || call) return;
     const id = window.setInterval(() => {
       if (!document.hidden) setState((s) => tick(s));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [ready, paused, setState]);
+  }, [ready, paused, call, setState]);
 
   // Todas las jugadas usan la forma funcional para no pisar los segundos que corren.
   const onPlay = (actId: string, chained: boolean) => {
+    const act = findAct(actId);
+    // Algunas acciones se resuelven jugando un minijuego en vez de al instante.
+    if (act && opensMini(act, state.pick.mode) && playable(act, state.pick.mode, state.sat)) {
+      setCall({ actId, chained });
+      return;
+    }
     setState((s) => play(s, actId, chained));
+    window.scrollTo(0, 0);
+  };
+
+  const onCallEnd = (result: CallResult) => {
+    if (!call) return;
+    const { actId, chained } = call;
+    setCall(null);
+    setState((s) => playCall(s, actId, result, chained));
     window.scrollTo(0, 0);
   };
 
@@ -88,6 +120,7 @@ export default function Game() {
         </Link>
         <p className={styles.foot}>Juego de ficción. Todos los personajes son adultos e inventados.</p>
       </div>
+      {call && <Llamada name={displayName(state)} onFinish={onCallEnd} />}
     </div>
   );
 }

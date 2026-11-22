@@ -1,8 +1,9 @@
 import { ACTS, LEVELS, REACT, STATES, TARGETS, THOUGHTS } from './data';
-import { cloneLive, freshLive, reactToAct, relocate, reviveLive } from './live';
+import type { CallResult } from './minijuegos/llamada';
+import { cloneLive, freshLive, reactToAct, reactToCall, relocate, reviveLive } from './live';
 import type { Rng } from './live';
 import { stage } from './stage';
-import type { Act, Chip, GameState, ModeId, Target, Turn } from './types';
+import type { Act, CallVerdict, Chip, GameState, ModeId, Target, Turn } from './types';
 
 export { stage } from './stage';
 export { tick } from './live';
@@ -42,6 +43,11 @@ export function fill(text: string, name: string, target?: Target): string {
 /** Satisfacción que muestra el botón antes de jugarlo. */
 export function gainPreview(act: Act, target: Target, mode: ModeId): number {
   return Math.round(act.sat * target.ms * (mode === 'frente' ? 2 : 1));
+}
+
+/** ¿Jugar esta acción abre un minijuego con el modo actual? Solo si él no está en el cuarto. */
+export function opensMini(act: Act, mode: ModeId): boolean {
+  return act.mini === 'llamada' && mode === 'ausente';
 }
 
 /** ¿Se puede jugar esta acción con el modo actual? */
@@ -271,5 +277,130 @@ export function play(prev: GameState, actId: string, chained: boolean, rng: Rng 
   s.log.unshift(`Día ${s.turn} · ${short} (${how}).`);
   if (s.log.length > 40) s.log.length = 40;
 
+  return s;
+}
+
+/* ---------- minijuego: llamada ---------- */
+
+const CALL_TAIL: Record<CallVerdict, string> = {
+  limpio: '{n} te dice que te quiere y cuelga tranquilo. No notó nada.',
+  dudas: '{n} se queda un segundo callado. Algo no le cuadró, pero lo deja pasar.',
+  sabe: '{n} escuchó lo que no debía. No dijo nada hasta que colgó.',
+};
+
+const CALL_CHIP: Record<CallVerdict, string> = {
+  limpio: 'te creyó',
+  dudas: 'le quedó una duda',
+  sabe: 'lo escuchó todo',
+};
+
+/**
+ * Resuelve una acción con la llamada ya jugada. Todo gira alrededor de él: lo que
+ * oyó decide su sospecha, su confianza y cuánto lo humillaste. La satisfacción no
+ * depende del minijuego.
+ */
+export function playCall(
+  prev: GameState,
+  actId: string,
+  result: CallResult,
+  chained = false,
+  rng: Rng = Math.random,
+): GameState {
+  const act = findAct(actId);
+  const target = findTarget(prev.pick.target);
+  const before = level(prev.sat);
+  if (!act || !target || !opensMini(act, prev.pick.mode) || !playable(act, prev.pick.mode, prev.sat)) return prev;
+
+  const s: GameState = { ...prev, log: [...prev.log], live: cloneLive(prev.live) };
+  const n = chained ? s.combo + 1 : 0;
+  if (!chained && s.cheat > 0) s.turn++;
+
+  const { verdict } = result;
+  const name = displayName(s);
+  const stale = act.lvl < before - 1;
+  const gain = Math.max(1, Math.round(act.sat * target.ms * (stale ? 0.5 : 1) * (1 + 0.15 * n)));
+  const short = fill(act.txt, name, target);
+  const det = fill(act.det, name, target);
+  const line = `${short}. ${det} ${fill(CALL_TAIL[verdict], name)}`;
+
+  const seen = verdict === 'sabe';
+  const stageNow = stage(s.h);
+  let dh = 0;
+  let dc = 0;
+  let ds = 0;
+  if (verdict === 'limpio') {
+    ds = 2;
+    dc = 4;
+  } else if (verdict === 'dudas') {
+    ds = 8 + result.exposure * 0.12;
+    dc = -6;
+    dh = act.hum * target.mh * 0.1;
+  } else {
+    ds = 22;
+    dc = -14;
+    dh = act.hum * target.mh * 0.7;
+  }
+
+  s.cheat++;
+  s.sat += gain;
+  if (seen) {
+    s.seen++;
+    s.streak = 0;
+  } else {
+    s.away++;
+    s.streak++;
+  }
+  if (s.streak > s.best) s.best = s.streak;
+  s.combo = seen ? 0 : n;
+  if (n + 1 > s.bestCombo) s.bestCombo = n + 1;
+
+  const h0 = s.h;
+  const c0 = s.c;
+  const s0 = s.s;
+  s.h = clamp(s.h + dh);
+  s.c = clamp(s.c + dc);
+  s.s = clamp(s.s + ds);
+  const stageAfter = stage(s.h);
+
+  const bpm0 = s.live.bpm;
+  reactToCall(s, act, verdict, rng);
+
+  const chips: Chip[] = [
+    { text: CALL_CHIP[verdict], tone: verdict === 'limpio' ? 'up' : verdict === 'dudas' ? 'bad' : 'him' },
+    { text: `+${gain} satisfacción`, tone: 'up' },
+  ];
+  if (n > 0) chips.push({ text: `combo ×${n + 1}`, tone: 'up' });
+  if (result.heard > 0) chips.push({ text: `oyó ruidos ×${result.heard}`, tone: 'bad' });
+  if (result.cuts + result.missed > 0) chips.push({ text: `te cortaste ×${result.cuts + result.missed}`, tone: 'bad' });
+  if (s.h !== h0) chips.push({ text: `humillación +${s.h - h0}`, tone: 'him' });
+  if (s.c !== c0) chips.push({ text: `confianza ${s.c > c0 ? '+' : ''}${s.c - c0}`, tone: 'him' });
+  if (s.s !== s0) chips.push({ text: `sospecha +${s.s - s0}`, tone: 'bad' });
+  if (s.live.bpm - bpm0 >= 4) chips.push({ text: `pulso ${bpm0} → ${s.live.bpm}`, tone: 'bad' });
+
+  const after = level(s.sat);
+  const notes: string[] = [];
+  if (stageAfter > stageNow) notes.push(`${name} cambió. Ahora está: ${STATES[stageAfter].toLowerCase()}.`);
+  if (after > before) {
+    notes.push(`Nivel ${after}. Lo de antes ya no alcanza: hay acciones nuevas.`);
+    s.tab = after;
+  }
+  if (seen) notes.push('Lo oyó. Se cortó el combo.');
+
+  s.last = {
+    aid: act.id,
+    tid: target.id,
+    mode: s.pick.mode,
+    seen,
+    stage: stageAfter,
+    line,
+    thought: s.live.feed[0]?.text ?? '',
+    chips,
+    notes,
+    follow: seen ? [] : followUps(act, after, s.pick.mode, rng),
+  };
+
+  const how = verdict === 'limpio' ? 'llamada, te creyó' : verdict === 'dudas' ? 'llamada, le quedó una duda' : 'llamada, lo oyó todo';
+  s.log.unshift(`Día ${s.turn} · ${short} (${how}).`);
+  if (s.log.length > 40) s.log.length = 40;
   return s;
 }

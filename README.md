@@ -5,7 +5,7 @@ Dos juegos de ficción interactiva para adultos, hechos con Next.js (App Router)
 - **A Sus Espaldas** (`/a-sus-espaldas`): 100 acciones en 10 niveles, combos, récords y muñequitos, con él vivo en tiempo real: pulso, ánimo, pensamientos, lo que no le cuadra y lo que hace por su cuenta.
 - **Tres Años** (`/tres-anos`): historia con decisiones y un final que depende de lo que elegiste.
 
-La partida se guarda solo en el navegador (`localStorage`). No hay servidor ni base de datos.
+La partida se guarda en el navegador (`localStorage`). La base de datos de Supabase ya está lista para guardar partidas en la nube, récords, logros y estadísticas de minijuegos (ver «Base de datos»), pero el juego todavía no se conecta a ella.
 
 ## Correrlo
 
@@ -33,7 +33,9 @@ src/
         TurnResult.tsx       lo que pasó y el combo
         StatusPanel.tsx      marcadores
         Deck.tsx             modo, persona, pestañas por nivel y acciones
+      components/minijuegos/ interfaz de los minijuegos (Llamada.tsx)
       lib/
+        minijuegos/llamada.ts  lógica pura de la llamada: aguja, hablar y lo que él oye
         data.ts              acciones, personas, textos y niveles (aquí se agrega contenido)
         engine.ts            reglas de cada jugada, funciones puras sin React
         live.ts              tiempo real: pulso, tensión, pensamientos y movimientos de él
@@ -58,6 +60,26 @@ El alias `@/` apunta a `src/`.
 - **Confusión**: las acciones con `clue` le dejan cosas que no le cuadran. Si desconfía, revisa tus cosas y puede encontrar algo.
 - **Si no está** ("No está"), nada de lo que hagas lo afecta: sigue confiando.
 - Las acciones marcadas `withHim` lo involucran sin que sepa lo que pasa, así que no se juegan con "No está".
+
+## Base de datos
+
+Supabase (proyecto `lglsdegcdtcnnbcfgpnf`). Copia `.env.example` a `.env.local` y pon la llave pública. Todas las tablas tienen RLS: cada jugador solo ve y escribe lo suyo.
+
+- `perfiles`: apodo del jugador.
+- `partidas`: partida guardada por juego (`estado` JSON, `version`).
+- `records`: mejores marcas por juego y métrica; todos los jugadores con sesión pueden leerlos (tabla de posiciones).
+- `logros_usuario`: logros desbloqueados.
+- `minijuego_intentos`: resultado de cada minijuego (veredicto, exposición, cortes, segundos), para afinar la dificultad.
+
+Los tipos están en `src/lib/supabase/database.types.ts`.
+
+## Minijuegos
+
+Algunas acciones se resuelven jugando un minijuego en vez de al instante. Todo gira alrededor de él: el resultado decide cuánto oyó, su sospecha, su confianza y cuánto lo humillaste. La satisfacción no depende del minijuego.
+
+- **Llamada** (acción `llamada`, solo cuando él no está en el cuarto): él llama mientras estás con el otro. Con el botón derecho mantienes apretado para hablar y contestar sus frases completas; con el izquierdo nivelas una aguja que sube sola con el ritmo. Si la aguja se va (o te pasas de más), se nota, y más si estás hablando. Termina en `limpio` (te creyó), `dudas` (le queda algo sin cuadrar) o `sabe` (lo oyó todo). En teclado: ← nivelar, → hablar.
+
+Para ligar otro minijuego a una acción: agrega `mini: 'id'` a sus marcas en `data.ts`, el id a `MiniId` en `types.ts`, su lógica en `lib/minijuegos/`, su interfaz en `components/minijuegos/`, y su resolución en `engine.ts` (como `playCall`).
 
 ## Agregar contenido
 

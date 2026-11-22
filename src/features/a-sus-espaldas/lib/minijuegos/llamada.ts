@@ -1,0 +1,266 @@
+import type { CallVerdict } from '../types';
+
+/**
+ * Minijuego «Llamada»: él llama mientras estás con el otro.
+ *
+ * - Botón derecho (hablar): mantenlo apretado para contestar. Si lo sueltas, dejas de hablar.
+ * - Botón izquierdo (nivelar): una aguja sube sola con el ritmo de lo que pasa y debes
+ *   mantenerla en el centro. Si no la bajas, se nota; si aprietas de más, se va al otro lado.
+ *
+ * Todo se mide desde él: cuánto alcanza a oír, qué le queda y qué entiende.
+ * Este archivo es lógica pura, sin React.
+ */
+
+export interface CallExchange {
+  /** lo que dice él (usa {n} para su nombre) */
+  him: string;
+  /** lo que debes contestar, completo, manteniendo el botón */
+  you: string;
+}
+
+export const CALL_SCRIPT: readonly CallExchange[] = [
+  { him: 'Hola, mi amor. ¿Cómo va la noche?', you: 'Bien, tranquila por aquí. ¿Y tú?' },
+  { him: '¿Dónde estás? Se oye música de fondo.', you: 'En casa de una amiga. Ya me voy.' },
+  { him: 'Te noto la voz rara. ¿Estás bien?', you: 'Subí las escaleras corriendo, nada más.' },
+  { him: 'Te quiero, ¿eh? Cuídate mucho, {n} se queda esperándote.', you: 'Yo también te quiero. Duerme bien.' },
+];
+
+/** Lo que dice él cuando oye algo. Sale al cruzar cada umbral de `HEAR_AT`. */
+export const CALL_HEARS: readonly string[] = [
+  '¿Qué fue ese ruido?',
+  'Se te corta la voz… ¿estás bien?',
+  '¿Hay alguien ahí contigo?',
+];
+
+/** Cuánto de «lo que él oye» (0 a 100) hace falta para que diga cada frase. */
+export const HEAR_AT: readonly number[] = [30, 55, 80];
+
+/* ---------- ajustes ---------- */
+
+export const HIM_SECS = 2.6; // lo que tarda en decir su frase
+export const WINDOW_SECS = 11; // tiempo que tienes para contestar
+const BEAT_SECS = 1.1; // pausa entre frases
+const CHARS_PER_SEC = 12; // qué tan rápido sale lo que dices mientras mantienes el botón
+
+const PUSH_UP = 2.8; // cuánto empuja la aguja hacia arriba el ritmo
+const PUSH_DOWN = 3.6; // cuánto la baja tu botón
+const DAMPING = 2.5;
+
+export const SAFE = 0.3; // dentro de esto no se nota
+export const LOUD = 0.6; // pasado esto se oye claro
+
+export type CallPhase = 'him' | 'you' | 'beat' | 'done';
+
+export interface CallLine {
+  who: 'him' | 'you';
+  text: string;
+  /** lo que dijiste se quedó a medias */
+  cut?: boolean;
+  /** lo dice porque oyó algo */
+  heard?: boolean;
+}
+
+export interface CallState {
+  /** segundos desde que empezó */
+  t: number;
+  /** -1 (te pasaste) a 1 (se desbordó). 0 es el centro */
+  needle: number;
+  vel: number;
+  /** fases del ritmo, para que cada llamada sea distinta */
+  phi: readonly [number, number];
+  phase: CallPhase;
+  phaseT: number;
+  /** en qué frase de CALL_SCRIPT va */
+  idx: number;
+  /** cuántas letras de tu respuesta ya dijiste */
+  chars: number;
+  speaking: boolean;
+  /** segundos callada mientras él espera tu respuesta */
+  silence: number;
+  /** 0 a 100: cuánto alcanza a oír él */
+  exposure: number;
+  peak: number;
+  /** cuántas veces dijo que oyó algo */
+  heard: number;
+  /** cuántas veces soltaste el botón con la frase a medias */
+  cuts: number;
+  /** frases que no alcanzaste a contestar */
+  missed: number;
+  hangup: boolean;
+  /** frases ya terminadas, la más vieja primero */
+  log: readonly CallLine[];
+}
+
+export interface CallInput {
+  /** botón de hablar apretado */
+  talk: boolean;
+  /** botón de nivelar apretado */
+  press: boolean;
+}
+
+export interface CallResult {
+  verdict: CallVerdict;
+  /** cuánto alcanzó a oír al final (0 a 100) */
+  exposure: number;
+  peak: number;
+  heard: number;
+  cuts: number;
+  missed: number;
+  hangup: boolean;
+  seconds: number;
+}
+
+export type Rng = () => number;
+
+export const fillName = (text: string, name: string): string => text.replace(/\{n\}/g, name);
+
+export function startCall(rng: Rng = Math.random): CallState {
+  return {
+    t: 0,
+    needle: 0,
+    vel: 0,
+    phi: [rng() * Math.PI * 2, rng() * Math.PI * 2],
+    phase: 'him',
+    phaseT: 0,
+    idx: 0,
+    chars: 0,
+    speaking: false,
+    silence: 0,
+    exposure: 0,
+    peak: 0,
+    heard: 0,
+    cuts: 0,
+    missed: 0,
+    hangup: false,
+    log: [],
+  };
+}
+
+const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n));
+
+/** Lo que empuja la aguja hacia arriba (0 a 1). Va subiendo con el tiempo, con oleadas y arrebatos. */
+export function drive(t: number, phi: readonly [number, number]): number {
+  const ramp = Math.min(1, 0.45 + t / 45);
+  const wave = 0.5 + 0.5 * Math.sin(t * 0.9 + phi[0]);
+  const burst = Math.pow(Math.max(0, Math.sin(t * 2.1 + phi[1])), 4);
+  return clamp(0.12 + ramp * (0.45 * wave + 0.65 * burst), 0, 1);
+}
+
+/** Cómo de mal se oye lo que pasa según dónde está la aguja. */
+export type Zone = 'safe' | 'warn' | 'loud';
+
+export function zoneOf(needle: number): Zone {
+  const a = Math.abs(needle);
+  return a > LOUD ? 'loud' : a > SAFE ? 'warn' : 'safe';
+}
+
+export function replyLength(s: Pick<CallState, 'idx'>): number {
+  return CALL_SCRIPT[s.idx]?.you.length ?? 0;
+}
+
+/** Avanza `dt` segundos. No modifica el estado anterior. */
+export function stepCall(prev: CallState, input: CallInput, dt: number): CallState {
+  if (prev.phase === 'done') return prev;
+  const s: CallState = { ...prev };
+  const dtc = Math.min(dt, 0.1); // si la pestaña se congela, no saltar de golpe
+  s.t += dtc;
+
+  // La aguja: la empuja el ritmo hacia arriba y tu botón hacia abajo, con inercia.
+  const acc = drive(s.t, s.phi) * PUSH_UP - (input.press ? PUSH_DOWN : 0);
+  s.vel = (s.vel + acc * dtc) * Math.max(0, 1 - DAMPING * dtc);
+  s.needle += s.vel * dtc;
+  if (s.needle > 1) {
+    s.needle = 1;
+    s.vel = Math.min(0, s.vel);
+  } else if (s.needle < -1) {
+    s.needle = -1;
+    s.vel = Math.max(0, s.vel);
+  }
+
+  // Hablar: solo cuenta mientras te toca contestar.
+  const answering = s.phase === 'you';
+  const len = replyLength(s);
+  const wasSpeaking = prev.speaking;
+  s.speaking = answering && input.talk && s.chars < len;
+
+  if (answering) {
+    if (s.speaking) {
+      s.chars = Math.min(len, s.chars + CHARS_PER_SEC * dtc);
+      s.silence = 0;
+    } else if (s.chars < len) {
+      s.silence += dtc;
+    }
+    // Soltaste con la frase a medias: se corta y se nota.
+    if (wasSpeaking && !s.speaking && s.chars < len) {
+      s.cuts += 1;
+      s.exposure += 4;
+    }
+  }
+
+  // Lo que él oye: sube cuando la aguja se va y más si estás hablando; baja si todo está parejo.
+  let leak = zoneOf(s.needle) === 'loud' ? 12 : zoneOf(s.needle) === 'warn' ? 4 : 0;
+  if (s.speaking) leak *= 1.8;
+  if (answering && !s.speaking && s.chars < len && s.silence > 3) leak += 3;
+  s.exposure = clamp(s.exposure + (leak > 0 ? leak : -1.2) * dtc, 0, 100);
+  if (s.exposure > s.peak) s.peak = s.exposure;
+
+  let log = s.log;
+  while (s.heard < HEAR_AT.length && s.exposure >= HEAR_AT[s.heard]) {
+    log = [...log, { who: 'him', text: CALL_HEARS[s.heard], heard: true }];
+    s.heard += 1;
+  }
+
+  // Fases de la conversación.
+  s.phaseT += dtc;
+  const line = CALL_SCRIPT[s.idx];
+  if (s.phase === 'him' && s.phaseT >= HIM_SECS) {
+    log = [...log, { who: 'him', text: line.him }];
+    s.phase = 'you';
+    s.phaseT = 0;
+    s.chars = 0;
+    s.silence = 0;
+  } else if (s.phase === 'you') {
+    if (s.chars >= len) {
+      log = [...log, { who: 'you', text: line.you }];
+      s.phase = 'beat';
+      s.phaseT = 0;
+    } else if (s.phaseT >= WINDOW_SECS) {
+      s.missed += 1;
+      s.exposure = Math.min(100, s.exposure + 15);
+      s.peak = Math.max(s.peak, s.exposure);
+      const said = line.you.slice(0, Math.floor(s.chars)).trimEnd();
+      log = [...log, { who: 'you', text: said ? `${said}…` : '…', cut: true }];
+      s.phase = 'beat';
+      s.phaseT = 0;
+    }
+  } else if (s.phase === 'beat' && s.phaseT >= BEAT_SECS) {
+    s.idx += 1;
+    s.phase = s.idx >= CALL_SCRIPT.length ? 'done' : 'him';
+    s.phaseT = 0;
+    s.chars = 0;
+    s.speaking = false;
+  }
+
+  if (s.exposure >= 100) {
+    s.hangup = true;
+    s.phase = 'done';
+    s.speaking = false;
+  }
+  s.log = log;
+  return s;
+}
+
+export function callResult(s: CallState): CallResult {
+  const score = Math.max(s.exposure, s.peak * 0.8);
+  const verdict: CallVerdict = s.hangup || score >= 60 ? 'sabe' : score >= 25 ? 'dudas' : 'limpio';
+  return {
+    verdict,
+    exposure: Math.round(s.exposure),
+    peak: Math.round(s.peak),
+    heard: s.heard,
+    cuts: s.cuts,
+    missed: s.missed,
+    hangup: s.hangup,
+    seconds: Math.round(s.t),
+  };
+}

@@ -1,4 +1,4 @@
-import type { Act, Mood, Mode, Target } from './types';
+import type { Act, CallVerdict, MiniId, Mood, Mode, Target } from './types';
 
 /** Satisfacción mínima para cada nivel (el índice + 1 es el nivel). */
 export const LEVELS: readonly number[] = [0, 30, 80, 160, 280, 450, 700, 1000, 1450, 2000];
@@ -55,6 +55,8 @@ interface Flags {
   e?: boolean;
   /** lo que le queda sin cuadrar */
   clue?: string;
+  /** abre un minijuego */
+  mini?: MiniId;
 }
 
 /** [id, nombre del botón, frase de lo que haces, lo que pasó dado a entender, marcas] */
@@ -78,6 +80,7 @@ function level(lvl: number, items: readonly Item[]): Act[] {
       priv: flags?.p,
       withHim: flags?.e,
       clue: flags?.clue,
+      mini: flags?.mini,
     };
   });
 }
@@ -182,7 +185,7 @@ const RAW_ACTS: readonly Act[] = [
     ['cumple', 'Hacerlo en su cumpleaños', 'Te acuestas con {t} el día del cumpleaños de {n}',
       'Llegas a la cena con una caja de pastel y una sonrisa. Nadie nota el reloj que miras.', { p: true }],
     ['llamada', 'Contestarle estando con el otro', 'Le contestas la llamada a {n} mientras estás con {t}',
-      'Le dices «te quiero» con la respiración todavía agitada y una mano ajena en la cintura.', { p: true }],
+      'Le dices «te quiero» con la respiración todavía agitada y una mano ajena en la cintura.', { p: true, mini: 'llamada' }],
     ['espera', 'Irte con el otro y decirle que vuelves en un rato', 'Te vas con {t} y le dices a {n} que vuelves en un rato',
       'Vuelves dos horas después, con el pelo revuelto y sin dar explicaciones.', { p: true, e: true }],
     ['fiesta', 'Hacerlo en la fiesta mientras él está en la sala', 'Te escabulles con {t} mientras {n} sigue en la sala con los invitados',
@@ -591,4 +594,23 @@ export const DOING: Record<MoveKey, readonly string[]> = {
   dolido: ['Callado, mirando por la ventana', 'Sentado con la mirada baja', 'Evitando mirarte'],
   resignado: ['Haciendo como si nada', 'Esperando a que se te pase', 'Atendiéndote en silencio'],
   alterado: ['Respirando hondo, con las manos temblando', 'Caminando de un lado a otro', 'Tratando de no llorar'],
+};
+
+/** Lo que piensa él después de una llamada, según lo que alcanzó a oír. */
+export const CALL_THOUGHTS: Record<CallVerdict, readonly string[]> = {
+  limpio: [
+    'Se le oía la voz distinta, pero ya es tarde. Es sueño, nada más.',
+    'Me dijo que me quiere. Con eso me duermo tranquilo.',
+    'Trabaja demasiado. Mañana le preparo el desayuno.',
+  ],
+  dudas: [
+    'Se le cortaba la voz. Y esa respiración… No, qué tontería.',
+    'Contestó rápido a todo, como con ganas de colgar.',
+    'Había un ruido de fondo y no supe distinguirlo. No me gusta no saber.',
+  ],
+  sabe: [
+    'Esa respiración no era de cansancio. Lo escuché todo y no dije nada.',
+    'Había alguien más ahí. Lo supe a la mitad de la llamada.',
+    'Seguí hablando como si nada. No sé de dónde saqué la voz.',
+  ],
 };

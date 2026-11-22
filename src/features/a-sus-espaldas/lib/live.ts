@@ -1,5 +1,6 @@
 import {
   AWAY_THOUGHTS,
+  CALL_THOUGHTS,
   CAUGHT_THOUGHTS,
   DOING,
   FOUND_THOUGHTS,
@@ -11,7 +12,7 @@ import {
   SHOCK_THOUGHTS,
 } from './data';
 import { stage } from './stage';
-import type { Act, FeedKind, GameState, Live, Mood } from './types';
+import type { Act, CallVerdict, FeedKind, GameState, Live, Mood } from './types';
 
 export type Rng = () => number;
 
@@ -138,6 +139,32 @@ export function reactToAct(state: GameState, act: Act, seen: boolean, rng: Rng):
   if (act.clue && mode === 'cerca') {
     addPuzzle(live, act.clue);
     live.confusion = Math.min(100, live.confusion + 8 + act.risk * 0.1);
+  }
+  live.mood = moodOf(state, live);
+  live.doing = doingFor(live.mood, true, rng);
+}
+
+/**
+ * Lo que pasa dentro de él después de una llamada. A diferencia de `reactToAct`, aquí
+ * sí le afecta aunque no esté en el cuarto: está al teléfono. Modifica `state.live`,
+ * que debe ser una copia, y se llama después de actualizar `state.s` y `state.h`.
+ */
+export function reactToCall(state: GameState, act: Act, verdict: CallVerdict, rng: Rng): void {
+  const live = state.live;
+  if (verdict === 'limpio') {
+    spike(live, -12);
+    live.confusion = Math.max(0, live.confusion - 5);
+    push(live, 'thought', pickOne(CALL_THOUGHTS.limpio, rng));
+  } else if (verdict === 'dudas') {
+    spike(live, 18);
+    live.confusion = Math.min(100, live.confusion + 18);
+    addPuzzle(live, act.clue ?? 'una llamada en la que se oía algo raro');
+    push(live, 'thought', pickOne(CALL_THOUGHTS.dudas, rng));
+  } else {
+    spike(live, 50 + act.hum * 0.3);
+    live.confusion = Math.min(100, live.confusion + 10);
+    push(live, 'thought', pickOne(CALL_THOUGHTS.sabe, rng), true);
+    if (rng() < 0.6) push(live, 'thought', pickOne(CAUGHT_THOUGHTS, rng), true);
   }
   live.mood = moodOf(state, live);
   live.doing = doingFor(live.mood, true, rng);
