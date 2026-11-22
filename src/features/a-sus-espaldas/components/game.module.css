@@ -162,7 +162,7 @@
 .thought {
   font-family: var(--display);
   font-style: italic;
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   line-height: 1.15;
   color: var(--lamp);
   text-wrap: balance;
@@ -678,5 +678,48 @@
   }
   .root {
     transition: none;
+  }
+}
+
+.thoughtIn {
+  animation: thoughtIn 0.5s ease both;
+}
+.chipIn {
+  animation: chipIn 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.more {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.more summary {
+  font-family: var(--util);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+.more p {
+  margin-top: 0.4rem;
+  line-height: 1.5;
+}
+@keyframes thoughtIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes chipIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }

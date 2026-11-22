@@ -30,20 +30,25 @@ export function TurnResult({ state, onPlay }: TurnResultProps) {
 
   return (
     <div className={styles.what} aria-live="polite">
-      <p>{turn.line}</p>
-      <p className={styles.thought}>{turn.thought}</p>
+      <p key={turn.thought} className={cn(styles.thought, styles.thoughtIn)}>
+        {turn.thought}
+      </p>
       <div className={styles.chips}>
-        {turn.chips.map((chip) => (
-          <span key={chip.text} className={cn(styles.chip, CHIP_TONE[chip.tone])}>
+        {turn.chips.map((chip, i) => (
+          <span
+            key={chip.text}
+            className={cn(styles.chip, styles.chipIn, CHIP_TONE[chip.tone])}
+            style={{ animationDelay: `${i * 70}ms` }}
+          >
             {chip.text}
           </span>
         ))}
       </div>
-      {turn.notes.map((note) => (
-        <p key={note} className={styles.note}>
-          {note}
-        </p>
-      ))}
+      {turn.notes.length > 0 && <p className={styles.note}>{turn.notes.join(' · ')}</p>}
+      <details className={styles.more}>
+        <summary>Qué pasó</summary>
+        <p>{turn.line}</p>
+      </details>
       {turn.follow.length > 0 && (
         <div className={styles.follow}>
           <span className={styles.label}>Y luego… (combo ×{state.combo + 2})</span>
