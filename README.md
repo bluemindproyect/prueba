@@ -87,6 +87,20 @@ El mismo esquema (`MiniIntent`) se usará en los demás minijuegos.
 
 Para ligar otro minijuego a una acción: agrega `mini: 'id'` a sus marcas en `data.ts`, el id a `MiniId` en `types.ts`, su lógica en `lib/minijuegos/`, su interfaz en `components/minijuegos/`, y su resolución en `engine.ts` (como `playCall`).
 
+## Contenido desde la base de datos
+
+La tabla `contenido` guarda frases y acciones que el juego suma a las que ya trae. Al entrar con tu correo (enlace por correo), el juego las descarga y las mezcla:
+
+- `accion`: acciones nuevas por nivel (1 a 10). Aparecen en la pestaña de su nivel.
+- `minijuego` (llamada): diálogos de apertura, medio y cierre, frases de cuando él oye algo y de cuando te quedas callada.
+- `pensamiento`, `escena` y `sentimiento`: lo que piensa, lo que pasa y cómo queda él al terminar la llamada.
+
+Cada llamada arma un guion distinto: una apertura, dos del medio y un cierre. Sin sesión, el juego usa solo su contenido incluido.
+
+Lo que juegas (jugadas y llamadas) se guarda en `eventos_juego` para que luego se pueda «procesar» y crear contenido nuevo.
+
+Para que el enlace del correo funcione, en Supabase → Authentication → URL Configuration pon la URL del sitio y agrégala a las URLs de redirección permitidas.
+
 ## Agregar contenido
 
 - **Una acción nueva**: agrega una fila a su nivel en `src/features/a-sus-espaldas/lib/data.ts` con `[id, botón, frase, lo que pasó, { p, e, clue }]`. `p` es puerta cerrada, `e` es que él participa sin saber, `clue` es lo que le queda sin cuadrar. La satisfacción y el riesgo salen del nivel y de la posición dentro de él.

@@ -1,3 +1,4 @@
+import { mezcla, poolDialogos, poolOye, poolSilencio } from '../contenido';
 import type { CallVerdict, MiniIntent } from '../types';
 
 /**
@@ -82,7 +83,13 @@ export interface CallState {
   phi: readonly [number, number];
   phase: CallPhase;
   phaseT: number;
-  /** en qué frase de CALL_SCRIPT va */
+  /** las frases de esta llamada, en orden */
+  script: readonly CallExchange[];
+  /** lo que dice él cuando oye algo (una por umbral de `HEAR_AT`) */
+  hears: readonly string[];
+  /** lo que dice si no contestas (una por frase) */
+  silences: readonly string[];
+  /** en qué frase de `script` va */
   idx: number;
   /** cuántas letras de tu respuesta ya dijiste */
   chars: number;
@@ -131,8 +138,35 @@ export type Rng = () => number;
 
 export const fillName = (text: string, name: string): string => text.replace(/\{n\}/g, name);
 
+const pickFrom = <T,>(items: readonly T[], rng: Rng): T => items[Math.floor(rng() * items.length)];
+
+/** Arma el guion de esta llamada: una apertura, dos del medio y un cierre. Cada llamada sale distinta. */
+export function buildScript(rng: Rng): readonly CallExchange[] {
+  const take = (list: readonly CallExchange[], fixed: readonly CallExchange[], n: number): CallExchange[] => {
+    const all = [...fixed, ...list];
+    const out: CallExchange[] = [];
+    while (out.length < n && all.length) out.push(all.splice(Math.floor(rng() * all.length), 1)[0]);
+    return out;
+  };
+  const toEx = (d: { him: string; you: string }): CallExchange => ({ him: d.him, you: d.you });
+  const fijoApertura = CALL_SCRIPT.slice(0, 1);
+  const fijoMedio = CALL_SCRIPT.slice(1, 3);
+  const fijoCierre = CALL_SCRIPT.slice(3);
+  return [
+    ...take(poolDialogos('apertura').map(toEx), fijoApertura, 1),
+    ...take(poolDialogos('medio').map(toEx), fijoMedio, 2),
+    ...take(poolDialogos('cierre').map(toEx), fijoCierre, 1),
+  ];
+}
+
 export function startCall(rng: Rng = Math.random, intent: MiniIntent = 'ocultar'): CallState {
+  const hears = [0, 1, 2].map((i) => pickFrom(mezcla([CALL_HEARS[i]], poolOye(i as 0 | 1 | 2)), rng));
+  const script = buildScript(rng);
+  const silences = script.map(() => pickFrom(mezcla(['¿Hola? ¿Sigues ahí?'], poolSilencio()), rng));
   return {
+    script,
+    hears,
+    silences,
     intent,
     t: 0,
     needle: 0,
@@ -173,8 +207,8 @@ export function zoneOf(needle: number): Zone {
   return a > LOUD ? 'loud' : a > SAFE ? 'warn' : 'safe';
 }
 
-export function replyLength(s: Pick<CallState, 'idx'>): number {
-  return CALL_SCRIPT[s.idx]?.you.length ?? 0;
+export function replyLength(s: Pick<CallState, 'idx' | 'script'>): number {
+  return s.script[s.idx]?.you.length ?? 0;
 }
 
 /** Avanza `dt` segundos. No modifica el estado anterior. */
@@ -234,13 +268,13 @@ export function stepCall(prev: CallState, input: CallInput, dt: number): CallSta
 
   let log = s.log;
   while (s.heard < HEAR_AT.length && s.exposure >= HEAR_AT[s.heard]) {
-    log = [...log, { who: 'him', text: CALL_HEARS[s.heard], heard: true }];
+    log = [...log, { who: 'him', text: s.hears[s.heard], heard: true }];
     s.heard += 1;
   }
 
   // Fases de la conversación.
   s.phaseT += dtc;
-  const line = CALL_SCRIPT[s.idx];
+  const line = s.script[s.idx];
   if (s.phase === 'him' && s.phaseT >= HIM_SECS) {
     log = [...log, { who: 'him', text: line.him }];
     s.phase = 'you';
@@ -258,12 +292,13 @@ export function stepCall(prev: CallState, input: CallInput, dt: number): CallSta
       s.peak = Math.max(s.peak, s.exposure);
       const said = line.you.slice(0, Math.floor(s.chars)).trimEnd();
       log = [...log, { who: 'you', text: said ? `${said}…` : '…', cut: true }];
+      if (s.silence > 4) log = [...log, { who: 'him', text: s.silences[s.idx] ?? '¿Hola?', heard: true }];
       s.phase = 'beat';
       s.phaseT = 0;
     }
   } else if (s.phase === 'beat' && s.phaseT >= BEAT_SECS) {
     s.idx += 1;
-    s.phase = s.idx >= CALL_SCRIPT.length ? 'done' : 'him';
+    s.phase = s.idx >= s.script.length ? 'done' : 'him';
     s.phaseT = 0;
     s.chars = 0;
     s.speaking = false;

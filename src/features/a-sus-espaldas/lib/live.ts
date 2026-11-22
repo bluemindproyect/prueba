@@ -1,3 +1,4 @@
+import { mezcla, poolPensamientos } from './contenido';
 import {
   AWAY_THOUGHTS,
   CALL_HURT_THOUGHTS,
@@ -158,21 +159,21 @@ export function reactToCall(state: GameState, act: Act, verdict: CallVerdict, hu
     spike(live, (strong ? 28 : 14) + hurt * 0.2);
     live.confusion = Math.min(100, live.confusion + (strong ? 16 : 8));
     if (verdict !== 'sabe') addPuzzle(live, 'tu voz temblando en la llamada');
-    push(live, 'thought', pickOne(strong ? CALL_HURT_THOUGHTS.herido : CALL_HURT_THOUGHTS.rozado, rng), strong);
-    if (verdict === 'sabe') push(live, 'thought', pickOne(CALL_THOUGHTS.sabe, rng), true);
+    push(live, 'thought', pickOne(strong ? mezcla(CALL_HURT_THOUGHTS.herido, poolPensamientos('herido')) : mezcla(CALL_HURT_THOUGHTS.rozado, poolPensamientos('rozado')), rng), strong);
+    if (verdict === 'sabe') push(live, 'thought', pickOne(mezcla(CALL_THOUGHTS.sabe, poolPensamientos('sabe')), rng), true);
   } else if (verdict === 'limpio') {
     spike(live, -12);
     live.confusion = Math.max(0, live.confusion - 5);
-    push(live, 'thought', pickOne(CALL_THOUGHTS.limpio, rng));
+    push(live, 'thought', pickOne(mezcla(CALL_THOUGHTS.limpio, poolPensamientos('limpio')), rng));
   } else if (verdict === 'dudas') {
     spike(live, 18);
     live.confusion = Math.min(100, live.confusion + 18);
     addPuzzle(live, act.clue ?? 'una llamada en la que se oía algo raro');
-    push(live, 'thought', pickOne(CALL_THOUGHTS.dudas, rng));
+    push(live, 'thought', pickOne(mezcla(CALL_THOUGHTS.dudas, poolPensamientos('dudas')), rng));
   } else {
     spike(live, 50 + act.hum * 0.3);
     live.confusion = Math.min(100, live.confusion + 10);
-    push(live, 'thought', pickOne(CALL_THOUGHTS.sabe, rng), true);
+    push(live, 'thought', pickOne(mezcla(CALL_THOUGHTS.sabe, poolPensamientos('sabe')), rng), true);
     if (rng() < 0.6) push(live, 'thought', pickOne(CAUGHT_THOUGHTS, rng), true);
   }
   live.mood = moodOf(state, live);

@@ -20,10 +20,12 @@ import {
 import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
 import type { GameState } from '@/features/a-sus-espaldas/lib/types';
 import { cn } from '@/lib/cn';
+import { useNube } from '@/features/a-sus-espaldas/lib/use-nube';
 import { usePersistentState } from '@/lib/use-persistent-state';
 import { Deck } from './Deck';
 import { Llamada } from './minijuegos/Llamada';
 import { LiveBar, LivePanel } from './LivePanel';
+import { NubePanel } from './NubePanel';
 import { Scene } from './Scene';
 import { StatusPanel } from './StatusPanel';
 import { TurnResult } from './TurnResult';
@@ -37,6 +39,8 @@ export default function Game() {
   const [paused, setPaused] = useState(false);
   // Minijuego en curso: la acción que lo abrió y si venía de un combo.
   const [call, setCall] = useState<{ actId: string; chained: boolean } | null>(null);
+  const nube = useNube();
+  const snap = (s: GameState) => ({ sat: s.sat, c: s.c, s: s.s, h: s.h, turn: s.turn });
 
   // Tiempo real: un segundo a la vez. Se detiene si pausas o si cambias de pestaña.
   useEffect(() => {
@@ -55,6 +59,7 @@ export default function Game() {
       setCall({ actId, chained });
       return;
     }
+    nube.registrar('jugada', { acto: actId, encadenada: chained, modo: state.pick.mode, objetivo: state.pick.target }, snap(state));
     setState((s) => play(s, actId, chained));
     window.scrollTo(0, 0);
   };
@@ -63,6 +68,7 @@ export default function Game() {
     if (!call) return;
     const { actId, chained } = call;
     setCall(null);
+    nube.registrar('llamada', { acto: actId, ...result }, snap(state));
     setState((s) => playCall(s, actId, result, chained));
     window.scrollTo(0, 0);
   };
@@ -94,6 +100,8 @@ export default function Game() {
         </section>
 
         <LivePanel state={state} paused={paused} onTogglePause={() => setPaused((p) => !p)} />
+
+        <NubePanel nube={nube} />
 
         <StatusPanel state={state} onName={(name) => setState((s) => setName(s, name))} />
 

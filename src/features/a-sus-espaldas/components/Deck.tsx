@@ -1,4 +1,5 @@
-import { ACTS, LEVELS, MODES, TARGETS } from '@/features/a-sus-espaldas/lib/data';
+import { allActs } from '@/features/a-sus-espaldas/lib/contenido';
+import { LEVELS, MODES, TARGETS } from '@/features/a-sus-espaldas/lib/data';
 import { findTarget, gainPreview, level, opensMini, playable, risk } from '@/features/a-sus-espaldas/lib/engine';
 import type { GameState, ModeId } from '@/features/a-sus-espaldas/lib/types';
 import styles from './game.module.css';
@@ -61,7 +62,7 @@ export function Deck({ state, onMode, onTarget, onTab, onPlay }: DeckProps) {
       </div>
 
       <div className={styles.acts}>
-        {ACTS.filter((a) => a.lvl === tab).map((act) => {
+        {allActs().filter((a) => a.lvl === tab).map((act) => {
           const ok = playable(act, state.pick.mode, state.sat);
           const tag = !ok
             ? 'necesita que esté cerca'

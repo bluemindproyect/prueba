@@ -1,4 +1,5 @@
-import { ACTS, LEVELS, REACT, STATES, TARGETS, THOUGHTS } from './data';
+import { allActs, mezcla, poolCierres } from './contenido';
+import { LEVELS, REACT, STATES, TARGETS, THOUGHTS } from './data';
 import type { CallResult } from './minijuegos/llamada';
 import { cloneLive, freshLive, reactToAct, reactToCall, relocate, reviveLive } from './live';
 import type { Rng } from './live';
@@ -9,7 +10,7 @@ export { stage } from './stage';
 export { tick } from './live';
 export type { Rng } from './live';
 
-export const findAct = (id: string): Act | undefined => ACTS.find((a) => a.id === id);
+export const findAct = (id: string): Act | undefined => allActs().find((a) => a.id === id);
 export const findTarget = (id: string): Target | undefined => TARGETS.find((t) => t.id === id);
 
 const clamp = (n: number): number => Math.max(0, Math.min(100, Math.round(n)));
@@ -107,6 +108,7 @@ export function reviveState(raw: unknown): GameState | null {
 
 function followUps(act: Act, lvl: number, mode: ModeId, rng: Rng): string[] {
   const ok = (x: Act) => x.lvl <= lvl && x.id !== act.id && !(x.withHim && mode === 'ausente');
+  const ACTS = allActs();
   const ups = ACTS.filter((x) => ok(x) && x.sat > act.sat).slice(0, 3);
   if (ups.length < 2) {
     const pool = ACTS.filter((x) => ok(x) && x.lvl >= lvl - 1 && !ups.includes(x));
@@ -331,8 +333,12 @@ export function playCall(
   const gain = Math.max(1, Math.round(act.sat * target.ms * (stale ? 0.5 : 1) * (1 + 0.15 * n) * (1 + k)));
   const short = fill(act.txt, name, target);
   const det = fill(act.det, name, target);
-  let tail = CALL_TAIL[verdict];
-  if (hurting && verdict !== 'sabe') tail = k >= 0.6 ? CALL_TAIL_HURT[1] : k >= 0.25 ? CALL_TAIL_HURT[0] : CALL_TAIL_FAILED;
+  let tail = pickOne(mezcla([CALL_TAIL[verdict]], poolCierres(verdict)), rng);
+  if (hurting && verdict !== 'sabe') {
+    const kind = k >= 0.6 ? 'fuerte' : k >= 0.25 ? 'leve' : 'fallo';
+    const fixed = kind === 'fuerte' ? CALL_TAIL_HURT[1] : kind === 'leve' ? CALL_TAIL_HURT[0] : CALL_TAIL_FAILED;
+    tail = pickOne(mezcla([fixed], poolCierres(kind)), rng);
+  }
   const line = `${short}. ${det} ${fill(tail, name)}`;
 
   const seen = verdict === 'sabe';

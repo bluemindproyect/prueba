@@ -60,9 +60,9 @@ interface Flags {
 }
 
 /** [id, nombre del botón, frase de lo que haces, lo que pasó dado a entender, marcas] */
-type Item = [id: string, label: string, txt: string, det: string, flags?: Flags];
+export type Item = [id: string, label: string, txt: string, det: string, flags?: Flags];
 
-function level(lvl: number, items: readonly Item[]): Act[] {
+export function level(lvl: number, items: readonly Item[]): Act[] {
   return items.map(([id, label, txt, det, flags], i) => {
     // Dentro de cada nivel, las últimas valen más y arriesgan más.
     const d = items.length > 1 ? (i / (items.length - 1)) * 3 - 1 : 0;

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
-  CALL_SCRIPT,
   HEAR_AT,
   HIM_SECS,
   LOUD,
@@ -170,7 +169,7 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
     return () => window.clearTimeout(id);
   }, [done]);
 
-  const line = CALL_SCRIPT[Math.min(s.idx, CALL_SCRIPT.length - 1)];
+  const line = s.script[Math.min(s.idx, s.script.length - 1)];
   const len = replyLength(s);
   const d = drive(s.t, s.phi);
   const sway = (s.needle * 4 + Math.sin(s.t * 6) * d * 1.2) * (reduceRef.current ? 0.25 : 1);

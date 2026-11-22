@@ -723,3 +723,47 @@
     transform: none;
   }
 }
+
+/* nube: entrar con correo */
+.nube {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: var(--raised);
+}
+.nubeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.nubeInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-size: 1rem;
+}
+.nubeBtn {
+  background: transparent;
+  color: var(--lamp);
+  border: 1px solid var(--lamp);
+  border-radius: 1rem;
+  padding: 0.3rem 0.9rem;
+  font-family: var(--util);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.nubeMsg {
+  margin: 0;
+  font-family: var(--util);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
