@@ -83,132 +83,186 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
   const bpm = pulsoDe(s);
   const preguntando = (s.fase === 'pregunta' || s.fase === 'quefue') && s.pregunta;
   const rapido = s.ritmo === 'rapido';
+  const mm = String(Math.floor(s.t / 60)).padStart(2, '0');
+  const ss = String(Math.floor(s.t % 60)).padStart(2, '0');
+  const heat = Math.max(s.sosp, s.dano * 0.9);
+  const ring = heat < 25 ? '#6fd3a0' : heat < 50 ? '#f0b24a' : heat < 75 ? '#ef7b6a' : '#e0457b';
 
   return (
     <div className={styles.overlay} role="dialog" aria-label="Llamada">
-      <div className={cn(styles.sheet, rapido && styles.shake)}>
-        <header className={styles.head}>
-          <div>
-            <p className={styles.kicker}>Llamada entrante</p>
+      <p className={styles.gameTag}>Minijuego · La llamada</p>
+      <div className={cn(styles.device, rapido && styles.shake)}>
+        <span className={styles.notch} aria-hidden="true" />
+        <div className={styles.phone}>
+        <div className={styles.statusBar}>
+          <span className={styles.rec}>
+            <i className={styles.recDot} /> en llamada {mm}:{ss}
+          </span>
+          <span className={styles.bars} aria-hidden="true">
+            <i /> <i /> <i /> <i />
+          </span>
+        </div>
+
+        <header className={styles.contact}>
+          <Avatar name={name} color={ring} bpm={bpm} />
+          <div className={styles.contactText}>
             <h2 className={styles.who}>{name}</h2>
+            <p className={styles.mood}>{ANIMO_LABEL[animo]} · {bpm} lpm</p>
           </div>
-          <div className={styles.pulse} aria-label={`Pulso ${bpm}`}>
-            <span className={styles.beat} style={{ animationDuration: `${(60 / bpm).toFixed(2)}s` }}>
-              ♥
-            </span>
-            <span>{bpm}</span>
-            <span className={styles.mood}>{ANIMO_LABEL[animo]}</span>
+          <div className={styles.gauges}>
+            <Gauge label="Sospecha" value={s.sosp} color="#f0b24a" />
+            <Gauge label="Dolor" value={s.dano} color="#e0457b" />
           </div>
         </header>
 
-        <section className={styles.him} aria-label="Lo que pasa dentro de él">
+        <div className={styles.thought}>
           <p className={styles.thinks}>«{fill(s.piensa || '…', name)}»</p>
-          <p className={styles.does}>{fill(s.hace, name)}</p>
           <p className={styles.imagines}>{fill(s.imagina, name)}</p>
-          <div className={styles.meters}>
-            <Meter label="Lo que sospecha" value={s.sosp} tone="warn" />
-            <Meter label="Cuánto le duele" value={s.dano} tone="hurt" />
-          </div>
-        </section>
+          <p className={styles.does}>{fill(s.hace, name)}</p>
+        </div>
 
-        <section className={styles.log} aria-live="polite">
-          {s.log.slice(-8).map((l, i) => (
-            <p
-              key={`${s.log.length - 8 + i}-${l.text}`}
-              className={cn(
-                styles.line,
-                l.who === 'el' && styles.lineHim,
-                l.who === 'el' && l.tono === 'oyo' && styles.lineHeard,
-                l.who === 'ella' && styles.lineYou,
-                l.who === 'ella' && l.tono === 'oyo' && styles.lineLoud,
-                l.who === 'ritmo' && styles.lineRhythm,
-                l.who === 'nota' && styles.lineNote,
-              )}
-            >
-              {fill(l.text, name)}
-            </p>
-          ))}
+        <section className={styles.chat} aria-live="polite">
+          <p className={styles.day}>Hoy</p>
+          {s.log.slice(-9).map((l, i) =>
+            l.who === 'ritmo' || l.who === 'nota' ? (
+              <p key={`${s.log.length - 9 + i}-${l.text}`} className={cn(styles.sys, l.who === 'ritmo' && styles.sysHot)}>
+                {fill(l.text, name)}
+              </p>
+            ) : (
+              <div
+                key={`${s.log.length - 9 + i}-${l.text}`}
+                className={cn(styles.bubble, l.who === 'ella' ? styles.out : styles.in, l.tono === 'oyo' && (l.who === 'ella' ? styles.outLoud : styles.inHeard))}
+              >
+                <span>{fill(l.text, name)}</span>
+                {l.who === 'ella' && <small className={styles.ticks}>✓✓</small>}
+              </div>
+            ),
+          )}
           <div ref={logEnd} />
         </section>
 
-        <section className={styles.her} aria-label="Tu lado">
-          <div className={styles.excit} role="meter" aria-valuemin={1} aria-valuemax={8} aria-valuenow={nivel} aria-label="Excitación">
+        <section className={styles.controls} aria-label="Tu lado">
+          <div className={styles.dots} role="meter" aria-valuemin={1} aria-valuemax={8} aria-valuenow={nivel} aria-label="Excitación">
             {Array.from({ length: 8 }, (_, i) => (
-              <span key={i} className={cn(styles.seg, i < nivel && styles.segOn, i === nivel - 1 && styles.segTop)} />
+              <i key={i} className={cn(styles.dot, i < nivel && styles.dotOn, i === nivel - 1 && styles.dotTop)} />
             ))}
-            <span className={styles.excitNum}>{nivel}/8</span>
+            <b className={styles.dotNum}>{nivel}</b>
           </div>
           <p className={cn(styles.narra, rapido && styles.narraHot)}>{s.narra}</p>
-          <div className={styles.rhythm} role="group" aria-label="Qué hace el otro">
-            {RITMOS.map((r) => (
+          <div className={styles.round} role="group" aria-label="Qué hace el otro">
+            {RITMOS.map((r, i) => (
               <button
                 key={r.id}
                 type="button"
                 className={cn(styles.rbtn, s.ritmo === r.id && styles.rbtnOn)}
                 aria-pressed={s.ritmo === r.id}
+                aria-label={r.label}
                 disabled={s.fase === 'fin' || s.fase === 'comenta'}
                 onClick={() => apply((p) => setRitmo(p, r.id))}
               >
-                {r.label}
+                <span className={styles.chev} aria-hidden="true">{'›'.repeat(i + 1)}</span>
+                <small>{r.label}</small>
               </button>
             ))}
+            <button
+              type="button"
+              className={cn(styles.rbtn, styles.hang)}
+              aria-label="Colgar"
+              disabled={s.fase !== 'cuelga'}
+              onClick={() => apply((p) => colgar(p, 'ella'))}
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <path fill="currentColor" d="M12 9c-3.2 0-6.2.8-8.6 2.4-.5.3-.6 1-.2 1.5l1.7 2c.3.4.9.5 1.3.2l2.4-1.4c.3-.2.5-.5.5-.9V11.6c1.5-.4 3.1-.4 4.6 0v1.2c0 .4.2.7.5.9l2.4 1.4c.4.3 1 .2 1.3-.2l1.7-2c.4-.5.3-1.2-.2-1.5C18.2 9.8 15.2 9 12 9Z" />
+              </svg>
+              <small>Colgar</small>
+            </button>
           </div>
           {s.dano >= 20 && <p className={styles.pobre}>{s.pobre}</p>}
         </section>
 
-        <section className={styles.actions}>
-          {preguntando && s.pregunta && (
-            <div className={styles.opts}>
+        {preguntando && s.pregunta && (
+          <div className={styles.sheet} role="group" aria-label="Qué contestas">
+            <span className={styles.grab} aria-hidden="true" />
+            <div className={styles.chips}>
               {s.pregunta.opciones.map((o, i) => (
-                <button key={`${i}-${o.texto}`} type="button" className={styles.opt} onClick={() => apply((p) => responder(p, i))}>
-                  <small className={styles.tag}>{TONO_TAG[o.tono]}</small>
+                <button key={`${i}-${o.texto}`} type="button" className={styles.chip} onClick={() => apply((p) => responder(p, i))}>
+                  <small className={cn(styles.tag, styles[`tag_${o.tono}`])}>{TONO_TAG[o.tono]}</small>
                   <span>{fill(o.texto, name)}</span>
                 </button>
               ))}
             </div>
-          )}
-          {s.fase === 'comenta' && s.prompt && (
-            <div className={styles.prompt}>
-              <p className={styles.promptKick}>{s.prompt.nivel >= 8 ? 'Ya viene, ya no te aguantas' : `Nivel ${s.prompt.nivel}: se te escapa`}</p>
+          </div>
+        )}
+
+        {s.fase === 'comenta' && s.prompt && (
+          <div className={styles.modal} role="alertdialog" aria-label="Se te escapa">
+            <div className={styles.card}>
+              <p className={styles.promptKick}>{s.prompt.nivel >= 8 ? 'Ya no aguantas más' : `Nivel ${s.prompt.nivel}`}</p>
               <p className={styles.promptText}>«{s.prompt.texto}»</p>
-              <div className={styles.row}>
-                <button type="button" className={cn(styles.big, styles.bigHot)} onClick={() => apply((p) => comentar(p, true))}>
-                  {s.prompt.nivel >= 8 ? 'Que se oiga' : 'Decirlo'}
-                </button>
-                <button type="button" className={styles.big} onClick={() => apply((p) => comentar(p, false))}>
-                  {s.prompt.nivel >= 8 ? 'Tragártelo' : 'Callarlo'}
-                </button>
-              </div>
+              <button type="button" className={cn(styles.act, styles.actHot)} onClick={() => apply((p) => comentar(p, true))}>
+                {s.prompt.nivel >= 8 ? 'Que se oiga' : 'Decirlo'}
+              </button>
+              <button type="button" className={styles.act} onClick={() => apply((p) => comentar(p, false))}>
+                {s.prompt.nivel >= 8 ? 'Tragártelo' : 'Callarlo'}
+              </button>
             </div>
-          )}
-          {s.fase === 'cuelga' && (
-            <div className={styles.prompt}>
+          </div>
+        )}
+
+        {s.fase === 'cuelga' && (
+          <div className={styles.modal} role="alertdialog" aria-label="Se acaba la llamada">
+            <div className={styles.card}>
               <p className={styles.promptKick}>Se acaba la llamada</p>
-              <div className={styles.row}>
-                <button type="button" className={styles.big} onClick={() => apply((p) => colgar(p, 'ella'))}>
-                  Cuelgo yo
-                </button>
-                <button type="button" className={styles.big} onClick={() => apply((p) => colgar(p, 'el'))}>
-                  Lo dejo colgar
-                </button>
-              </div>
+              <button type="button" className={styles.act} onClick={() => apply((p) => colgar(p, 'ella'))}>
+                Cuelgo yo
+              </button>
+              <button type="button" className={styles.act} onClick={() => apply((p) => colgar(p, 'el'))}>
+                Lo dejo colgar
+              </button>
             </div>
-          )}
-          {s.fase === 'reaccion' && <p className={styles.wait}>Te escucha…</p>}
-          {s.fase === 'fin' && <p className={styles.wait}>{s.colgo === 'el' ? 'Cuelga.' : 'Cuelgas.'}</p>}
-        </section>
+          </div>
+        )}
+
+        {s.fase === 'reaccion' && <p className={styles.wait}>Te escucha…</p>}
+        {s.fase === 'fin' && <p className={styles.wait}>{s.colgo === 'el' ? 'Cuelga.' : 'Cuelgas.'}</p>}
+        </div>
       </div>
     </div>
   );
 }
 
-function Meter({ label, value, tone }: { label: string; value: number; tone: 'warn' | 'hurt' }) {
+/** Avatar con anillo que late con su pulso y cambia de color según cómo está él. */
+function Avatar({ name, color, bpm }: { name: string; color: string; bpm: number }) {
   return (
-    <div className={styles.meter}>
-      <span className={styles.meterLabel}>{label}</span>
-      <div className={styles.track}>
-        <div className={cn(styles.fill, tone === 'hurt' && styles.fillHurt)} style={{ width: `${Math.min(100, value)}%` }} />
-      </div>
+    <div className={styles.avatar} style={{ ['--ring' as string]: color, ['--beat' as string]: `${(60 / bpm).toFixed(2)}s` }}>
+      <span>{name.trim().charAt(0).toUpperCase() || '?'}</span>
+    </div>
+  );
+}
+
+/** Medidor circular de 0 a 100. */
+function Gauge({ label, value, color }: { label: string; value: number; color: string }) {
+  const R = 15;
+  const C = 2 * Math.PI * R;
+  const v = Math.max(0, Math.min(100, value));
+  return (
+    <div className={styles.gauge}>
+      <svg viewBox="0 0 40 40" width="40" height="40" aria-label={`${label} ${Math.round(v)}`}>
+        <circle cx="20" cy="20" r={R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
+        <circle
+          cx="20"
+          cy="20"
+          r={R}
+          fill="none"
+          stroke={color}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${(C * v) / 100} ${C}`}
+          transform="rotate(-90 20 20)"
+          style={{ transition: 'stroke-dasharray 0.4s ease' }}
+        />
+      </svg>
+      <small>{label}</small>
     </div>
   );
 }
