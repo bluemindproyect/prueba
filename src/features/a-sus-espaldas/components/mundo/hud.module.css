@@ -146,6 +146,9 @@
   }
 }
 .hablar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   position: absolute;
   left: 50%;
   bottom: 5.2rem;
@@ -166,14 +169,16 @@
   gap: 0.4rem;
   z-index: 5000;
 }
+/* botón redondo con icono */
 .boton {
-  font-size: 0.72rem;
+  display: grid;
+  place-items: center;
   color: #fff;
   background: rgb(10 8 18 / 0.7);
   border: 1.5px solid rgb(255 255 255 / 0.4);
-  border-radius: 99px;
-  padding: 0.45rem 0.95rem;
-  min-width: 5.6rem;
+  border-radius: 50%;
+  width: 3.1rem;
+  height: 3.1rem;
 }
 .botonOn {
   background: rgb(230 100 140 / 0.85);
@@ -217,5 +222,320 @@
 @keyframes respira {
   50% {
     transform: translateY(-4px) scale(1.012) rotate(0.6deg);
+  }
+}
+
+.pipOn {
+  box-shadow: 0 0 0 3px #ffd27a, 0 6px 18px rgb(0 0 0 / 0.5);
+  touch-action: none;
+}
+.pip {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.verEl {
+  position: absolute;
+  inset: 0;
+  z-index: 4500;
+  background: #0d0f16;
+}
+.soltar {
+  position: absolute;
+  left: 50%;
+  bottom: 1.2rem;
+  transform: translateX(-50%);
+  color: #fff;
+  background: rgb(10 8 18 / 0.7);
+  border-radius: 99px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  z-index: 4600;
+}
+.radar {
+  position: absolute;
+  top: 8.4rem;
+  left: 0.6rem;
+  width: 5.6rem;
+  height: 5.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  z-index: 5000;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.55);
+}
+.avisos {
+  position: absolute;
+  top: 8.6rem;
+  left: 6.9rem;
+  right: 10.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  z-index: 5000;
+  pointer-events: none;
+}
+.aviso {
+  font-size: 0.68rem;
+  color: #fff;
+  background: rgb(10 8 18 / 0.75);
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 99px;
+  padding: 0.2rem 0.6rem;
+  width: fit-content;
+}
+.avisoRojo {
+  background: rgb(200 50 70 / 0.9);
+  animation: pulso2 0.9s ease-in-out infinite;
+}
+@keyframes pulso2 {
+  50% {
+    transform: scale(1.06);
+  }
+}
+.ciudad {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* acciones */
+.contexto {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.sensor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: #fff;
+  border-radius: 99px;
+  padding: 0.2rem 0.6rem;
+  background: rgb(255 255 255 / 0.12);
+}
+.sensorOk {
+  background: rgb(60 160 100 / 0.5);
+}
+.sensorAviso {
+  background: rgb(220 160 40 / 0.6);
+}
+.sensorPeligro {
+  background: rgb(200 50 70 / 0.75);
+}
+.con {
+  font-size: 0.75rem;
+  color: #ffd27a;
+}
+.cuatro {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.cuadro {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 5.2rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.cuadro:active {
+  background: rgb(230 100 140 / 0.6);
+}
+.cuadroOff {
+  opacity: 0.35;
+}
+.mostrar {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #3b2a45;
+  border: 2px solid #ffd27a;
+}
+.chance {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: #ffb3cb;
+  margin: 0.4rem 0 0;
+}
+.fila4 {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 0.6rem;
+}
+.chico {
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 50%;
+}
+.chico:disabled {
+  opacity: 0.3;
+}
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  color: #fff;
+}
+.atras,
+.herr {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.12);
+  border: 0;
+  border-radius: 50%;
+}
+.herrOn {
+  background: rgb(230 100 140 / 0.85);
+}
+.gente {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.persona {
+  font-size: 0.72rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 99px;
+  padding: 0.25rem 0.7rem;
+}
+.personaOn {
+  background: rgb(230 100 140 / 0.8);
+}
+.menus {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.menuBtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 4.2rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  border-radius: 14px;
+}
+.punto {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ffb02e;
+}
+.candado {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  color: #ffd27a;
+  display: grid;
+}
+.lista {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+.opcion {
+  text-align: left;
+  font-size: 0.82rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.09);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+}
+.opcion:active {
+  background: rgb(230 100 140 / 0.6);
+}
+.gestos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.gesto {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  padding: 0.6rem 0.3rem;
+  font-size: 0.7rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  border-radius: 14px;
+}
+.rescate {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translateX(-50%);
+  width: min(88%, 22rem);
+  z-index: 8000;
+  text-align: center;
+  color: #fff;
+  background: rgb(160 30 50 / 0.94);
+  border: 2px solid #fff;
+  border-radius: 16px;
+  padding: 0.8rem;
+}
+.rescate p {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.rescate div {
+  display: grid;
+  gap: 0.4rem;
+}
+.rescate button {
+  color: #3a0d18;
+  background: #fff;
+  border: 0;
+  border-radius: 99px;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+.cuenta {
+  display: block;
+  height: 4px;
+  margin-top: 0.6rem;
+  border-radius: 2px;
+  background: #ffd27a;
+  animation: cuenta 7s linear forwards;
+  transform-origin: left;
+}
+@keyframes cuenta {
+  to {
+    transform: scaleX(0);
   }
 }

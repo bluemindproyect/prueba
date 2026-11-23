@@ -1,16 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Chica, POSES, ROPA_BIKINI } from './Chica';
 import { Vista3D } from './Vista3D';
+import { Icono } from './Iconos';
+import type { NombreIcono } from './Iconos';
 import type { Habitante } from './Vista3D';
 import { ETAPAS, T, ZONAS } from '@/features/a-sus-espaldas/lib/mundo/datos';
 import type { Escena, Persona } from '@/features/a-sus-espaldas/lib/mundo/datos';
 import { gestoDeEl, gestoPorId } from '@/features/a-sus-espaldas/lib/mundo/gestos';
+import { GESTOS_CERCANIA, MENUS, RESPALDO, RESPUESTA_RASGO, cargarOpciones } from '@/features/a-sus-espaldas/lib/mundo/opciones';
+import type { OpcionAccion } from '@/features/a-sus-espaldas/lib/mundo/opciones';
 import {
+  apuro,
   avanzar,
   barrasDeEtapa,
+  cercaniaVista,
+  correrChismes,
+  notaDeEl,
   chanceDeSi,
   distante,
   dejarPista,
@@ -79,11 +88,31 @@ export default function Mundo() {
   const [confirmar, setConfirmar] = useState(false);
   const [panel, setPanel] = useState<'acciones' | 'mapa' | 'memoria' | 'mas' | null>(null);
   const [cerca, setCerca] = useState<string | null>(null);
+  const [verEl, setVerEl] = useState(false);
+  const [vistaAcc, setVistaAcc] = useState<'raiz' | 'hablar' | 'menu' | 'gestos'>('raiz');
+  const [menuSel, setMenuSel] = useState<string | null>(null);
+  const [herr, setHerr] = useState<'cerca' | 'telefono'>('cerca');
+  const [objetivo, setObjetivo] = useState<string | null>(null);
+  const [opciones, setOpciones] = useState<OpcionAccion[]>(RESPALDO);
+  const [burbujas, setBurbujas] = useState<Record<string, string>>({});
+  const [contacto, setContacto] = useState<{ id: string; gesto: string; nivel: 1 | 2 } | null>(null);
+  const [rescate, setRescate] = useState(false);
+  const ultimoGesto = useRef(0);
+  const temporizadores = useRef<number[]>([]);
+
+  useEffect(() => {
+    let vivo = true;
+    cargarOpciones().then((o) => vivo && setOpciones(o));
+    return () => {
+      vivo = false;
+      temporizadores.current.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
 
   useEffect(() => {
     if (!ready || pausa) return;
     const id = window.setInterval(() => {
-      if (!document.hidden) setE((s) => tick(s));
+      if (!document.hidden) setE((s) => correrChismes(tick(s)));
     }, 1000);
     return () => window.clearInterval(id);
   }, [ready, pausa, setE]);
@@ -114,6 +143,27 @@ export default function Mundo() {
   ];
   const hotspots: ('sabanas' | 'banar' | 'esconder')[] = lugarAct.escena === 'cama' ? ['sabanas'] : lugarAct.escena === 'bano' ? ['banar'] : lugarAct.escena === 'sotano' ? ['esconder'] : [];
   const sc = e.escena;
+  const otrosAqui = aqui.length;
+  const contexto: 'solas' | 'gente' | 'el' = elAquiAhora ? 'el' : otrosAqui > 1 ? 'gente' : 'solas';
+  const seAcerca = !elAquiAhora && tramoEl({ ...e, reloj: e.reloj + 12 }).lugar === e.lugar;
+
+  // Sacarla de apuros: él llega justo después de un gesto
+  const antes = useRef(false);
+  useEffect(() => {
+    if (elAquiAhora && !antes.current && Date.now() - ultimoGesto.current < 30000 && !sc) {
+      setRescate(true);
+      setContacto(null);
+    }
+    antes.current = elAquiAhora;
+  }, [elAquiAhora]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!rescate) return;
+    const t = window.setTimeout(() => {
+      setRescate(false);
+      setE((s) => apuro(s, 'nada'));
+    }, 7000);
+    return () => window.clearTimeout(t);
+  }, [rescate, setE]);
   const paso = sc ? sc.pasos[sc.paso] : null;
   const personaEscena = sc ? personas(e.ciclo).find((p) => p.id === sc.con) : null;
 
@@ -130,77 +180,217 @@ export default function Mundo() {
   const hacer = (f: (s: Estado) => Estado) => setE((s) => f(s));
 
   const abrir = (q: typeof panel) => setPanel(panel === q ? null : q);
+
+
+  const POS = (i: number): [number, number] => [52 + (i % 3) * 98, 46 + Math.floor(i / 3) * 78];
+  const idxZona = (z: string) => Math.max(0, zonas.indexOf(z));
+  const yoP = POS(idxZona(lugarAct.zona));
+  const elP = POS(idxZona(lugarEl.zona));
+  const filas = Math.ceil(zonas.length / 3);
+  const altoMapa = filas * 78 + 40;
   const ruta = (z: string) => zonaNombre(z);
+  const calle = (a: [number, number], b: [number, number]) => `M${a[0]} ${a[1]} L${b[0]} ${a[1]} L${b[0]} ${b[1]}`;
+
+  const decir = (id: string, txt: string, resp?: string) => {
+    temporizadores.current.forEach((t) => window.clearTimeout(t));
+    temporizadores.current = [];
+    setBurbujas({ ella: txt });
+    if (resp) temporizadores.current.push(window.setTimeout(() => setBurbujas({ [id]: resp }), 1700));
+    temporizadores.current.push(window.setTimeout(() => setBurbujas({}), resp ? 4200 : 2800));
+  };
+  const objetivoP: Persona | null = herr === 'telefono' ? (personas(e.ciclo).find((p) => p.id === objetivo) ?? enfocado ?? personas(e.ciclo)[0] ?? null) : enfocado;
+  const usarOpcion = (o: OpcionAccion, riesgo: 'libre' | 'riesgo' | 'bloqueado') => {
+    const p = objetivoP;
+    if (!p) return;
+    const r = RESPUESTA_RASGO[p.rasgo] ?? RESPUESTA_RASGO.timido;
+    decir(p.id, o.frase, r[Math.floor(Math.random() * r.length)]);
+    const visible = herr === 'cerca' && contexto !== 'solas' && riesgo !== 'libre';
+    if (visible) ultimoGesto.current = Date.now();
+    hacer((s) => {
+      let n = seducir(s, p, o.tipo === 'insinuar' ? 'indirecta' : 'conversar');
+      if (visible) n = cercaniaVista(n, 1, Math.max(0, otrosAqui - 1), elAquiAhora);
+      return n;
+    });
+    setPanel(null);
+    setVistaAcc('raiz');
+  };
+  const usarGesto = (g: (typeof GESTOS_CERCANIA)[number]) => {
+    if (!enfocado) return;
+    setContacto({ id: enfocado.id, gesto: g.pos, nivel: g.nivel });
+    temporizadores.current.push(window.setTimeout(() => setContacto(null), 6000));
+    ultimoGesto.current = Date.now();
+    hacer((s) => cercaniaVista(seducir(s, enfocado, g.nivel === 2 ? 'mostrarte' : 'indirecta'), g.nivel, Math.max(0, otrosAqui - 1), elAquiAhora));
+    setBurbujas({});
+    setPanel(null);
+    setVistaAcc('raiz');
+  };
+  const cuadro = (ic: NombreIcono, etiqueta: string, on: () => void, extra?: ReactNode, off = false) => (
+    <button type="button" className={cn(hud.cuadro, off && hud.cuadroOff)} onClick={on} disabled={off} aria-label={etiqueta}>
+      {extra ?? <Icono n={ic} size={38} />}
+    </button>
+  );
+  const volver = (a: typeof vistaAcc) => (
+    <button type="button" className={hud.atras} onClick={() => setVistaAcc(a)} aria-label="Volver">
+      <Icono n="atras" size={22} />
+    </button>
+  );
 
   const accionesJSX = (
     <>
-      <h2 className={styles.h3}>{enfocado ? `Con ${enfocado.nombre}` : 'Qué haces'}</h2>
-      {enfocado ? (
-        <>
-          <div className={styles.acciones}>
-            <button type="button" className={styles.btn} onClick={() => hacer((s) => seducir(s, enfocado, 'conversar'))}>
-              Conversar
-            </button>
-            <button type="button" className={styles.btn} onClick={() => hacer((s) => seducir(s, enfocado, 'indirecta'))}>
-              Lanzar indirectas
-            </button>
-            <button type="button" className={styles.btn} onClick={() => hacer((s) => seducir(s, enfocado, 'mostrarte'))}>
-              Mostrar el cuerpo
-            </button>
-            <button type="button" className={cn(styles.btn, styles.btnRosa)} onClick={() => hacer((s) => proponer(s, enfocado))}>
-              Proponerle sexo
-            </button>
-          </div>
-          <p className={styles.dim}>
-            Interés {Math.round(e.interes[enfocado.id] ?? 0)} · te diría que sí con {Math.round(chanceDeSi(e, enfocado))}% de probabilidad. Es {enfocado.pista}. {elCerca(e) ? 'Él está cerca: más riesgo, más satisfacción.' : ''}
-          </p>
-          {e.pendiente === enfocado.id && !lugarAct.privado && <p className={styles.dim}>Aceptó, pero aquí no. Llévalo a un lugar con 🔒.</p>}
-        </>
-      ) : (
-        <p className={styles.dim}>Camina hasta alguien para seducirlo.</p>
-      )}
-      <div className={styles.acciones} style={{ marginTop: '0.5rem' }}>
-        <button type="button" className={styles.btn} disabled={!elAquiAhora} onClick={() => hacer(ternura)}>
-          Ser tierna con él
-        </button>
-        <button type="button" className={styles.btn} disabled={!elAquiAhora} onClick={() => hacer(distante)}>
-          Ser fría con él
-        </button>
-        <button type="button" className={styles.btn} onClick={() => hacer(dejarPista)}>
-          Dejar una pista a la vista
-        </button>
-        <button type="button" className={styles.btn} onClick={() => hacer((s) => avanzar(s, 15))}>
-          Esperar 15 min
-        </button>
+      <div className={hud.contexto}>
+        <span className={cn(hud.sensor, contexto === 'solas' && hud.sensorOk, contexto === 'gente' && hud.sensorAviso, contexto === 'el' && hud.sensorPeligro)}>
+          <Icono n={contexto === 'solas' ? 'candado' : 'ojo'} size={16} /> {contexto === 'solas' ? 'A solas' : contexto === 'gente' ? 'Con gente cerca' : 'Él está aquí'}
+        </span>
+        {enfocado && <span className={hud.con}>{enfocado.nombre}</span>}
       </div>
-      {(e.rastros.sabanas || e.rastros.ropa || e.rastros.olor > 5 || e.rastros.escondido) && (
+
+      {vistaAcc === 'raiz' && (
         <>
-          <h2 className={styles.h3} style={{ marginTop: '0.7rem' }}>
-            Rastros
-          </h2>
-          <div className={styles.acciones}>
-            {e.rastros.sabanas && (
-              <button type="button" className={styles.btn} onClick={() => hacer((s) => limpiar(s, 'sabanas' as Limpieza))}>
-                Cambiar sábanas
-              </button>
+          <div className={hud.cuatro}>
+            {cuadro('chat', 'Hablar', () => setVistaAcc('hablar'), undefined, !enfocado && herr === 'cerca' && personas(e.ciclo).length === 0)}
+            {cuadro('cara', 'Gestos', () => setVistaAcc('gestos'), undefined, !enfocado)}
+            {cuadro(
+              'cara',
+              'Mostrar',
+              () => enfocado && hacer((s) => seducir(s, enfocado, 'mostrarte')),
+              <span className={hud.mostrar}>
+                <Chica g={gestoPorId('dulce') ?? gestoDeEl(0, 0)} pose={POSES[1] ?? POSES[0]} ropa={ROPA_BIKINI} size={64} />
+              </span>,
+              !enfocado,
             )}
-            {e.rastros.ropa && (
-              <button type="button" className={styles.btn} onClick={() => hacer((s) => limpiar(s, 'ropa' as Limpieza))}>
-                Esconder su ropa
-              </button>
-            )}
-            {e.rastros.olor > 5 && (
-              <button type="button" className={styles.btn} onClick={() => hacer((s) => limpiar(s, 'banar' as Limpieza))}>
-                Bañarte ({Math.round(e.rastros.olor)}% de olor)
-              </button>
-            )}
-            {(e.rastros.sabanas || e.rastros.ropa) && (
-              <button type="button" className={styles.btn} onClick={() => hacer((s) => limpiar(s, 'esconder' as Limpieza))}>
-                Guardar todo en el sótano
-              </button>
-            )}
+            {cuadro('corazon', 'Proponer', () => enfocado && hacer((s) => proponer(s, enfocado)), undefined, !enfocado)}
           </div>
-          {e.rastros.escondido && <p className={styles.dim}>Hay cosas escondidas en el sótano. Si él baja, podría encontrarlas.</p>}
+          {enfocado && (
+            <p className={hud.chance}>
+              <Icono n="corazon" size={14} /> {Math.round(chanceDeSi(e, enfocado))}%
+            </p>
+          )}
+          <div className={hud.fila4}>
+            <button type="button" className={hud.chico} onClick={() => hacer(ternura)} disabled={!elAquiAhora} aria-label="Ser tierna">
+              <Icono n="tierna" size={22} />
+            </button>
+            <button type="button" className={hud.chico} onClick={() => hacer(distante)} disabled={!elAquiAhora} aria-label="Ser fría">
+              <Icono n="fria" size={22} />
+            </button>
+            <button type="button" className={hud.chico} onClick={() => hacer(dejarPista)} aria-label="Dejar una pista">
+              <Icono n="pista" size={22} />
+            </button>
+            <button type="button" className={hud.chico} onClick={() => hacer((s) => avanzar(s, 15))} aria-label="Esperar">
+              <Icono n="espera" size={22} />
+            </button>
+          </div>
+          {(e.rastros.sabanas || e.rastros.ropa || e.rastros.olor > 5 || e.rastros.escondido) && (
+            <div className={styles.acciones} style={{ marginTop: '0.6rem' }}>
+              {e.rastros.sabanas && (
+                <button type="button" className={styles.btn} onClick={() => hacer((s) => limpiar(s, 'sabanas' as Limpieza))}>
+                  Cambiar sábanas
+                </button>
+              )}
+              {e.rastros.ropa && (
+                <button type="button" className={styles.btn} onClick={() => hacer((s) => limpiar(s, 'ropa' as Limpieza))}>
+                  Esconder su ropa
+                </button>
+              )}
+              {e.rastros.olor > 5 && (
+                <button type="button" className={styles.btn} onClick={() => hacer((s) => limpiar(s, 'banar' as Limpieza))}>
+                  Bañarte
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {vistaAcc === 'hablar' && (
+        <>
+          <div className={hud.barra}>
+            {volver('raiz')}
+            <button type="button" className={cn(hud.herr, herr === 'cerca' && hud.herrOn)} onClick={() => setHerr('cerca')} aria-label="Cerca de él">
+              <Icono n="cerca" size={22} />
+            </button>
+            <button type="button" className={cn(hud.herr, herr === 'telefono' && hud.herrOn)} onClick={() => setHerr('telefono')} aria-label="Por teléfono">
+              <Icono n="telefono" size={22} />
+            </button>
+          </div>
+          {herr === 'telefono' && (
+            <div className={hud.gente}>
+              {personas(e.ciclo).map((p) => (
+                <button key={p.id} type="button" className={cn(hud.persona, objetivoP?.id === p.id && hud.personaOn)} onClick={() => setObjetivo(p.id)}>
+                  {p.nombre}
+                </button>
+              ))}
+            </div>
+          )}
+          {!objetivoP ? (
+            <p className={styles.dim}>Camina hasta alguien.</p>
+          ) : (
+            <div className={hud.menus}>
+              {MENUS.map((m) => {
+                const bloq = herr === 'cerca' && m.riesgo === 'bloqueado' && contexto !== 'solas';
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={bloq}
+                    className={cn(hud.menuBtn, bloq && hud.cuadroOff)}
+                    onClick={() => {
+                      setMenuSel(m.id);
+                      setVistaAcc('menu');
+                    }}
+                    aria-label={m.id}
+                  >
+                    <Icono n={m.icono} size={30} />
+                    {m.riesgo === 'riesgo' && herr === 'cerca' && contexto !== 'solas' && <i className={hud.punto} />}
+                    {bloq && (
+                      <i className={hud.candado}>
+                        <Icono n="candado" size={13} />
+                      </i>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {vistaAcc === 'menu' && menuSel && (
+        <>
+          <div className={hud.barra}>
+            {volver('hablar')}
+            <Icono n={MENUS.find((m) => m.id === menuSel)?.icono ?? 'chat'} size={26} />
+          </div>
+          <div className={hud.lista}>
+            {opciones
+              .filter((o) => o.menu === menuSel && o.herramienta.includes(herr))
+              .map((o) => (
+                <button key={o.id} type="button" className={hud.opcion} onClick={() => usarOpcion(o, MENUS.find((m) => m.id === menuSel)?.riesgo ?? 'libre')}>
+                  {o.opcion}
+                </button>
+              ))}
+          </div>
+        </>
+      )}
+
+      {vistaAcc === 'gestos' && (
+        <>
+          <div className={hud.barra}>{volver('raiz')}</div>
+          <div className={hud.gestos}>
+            {GESTOS_CERCANIA.map((g) => {
+              const bloq = g.nivel === 2 && (!enfocado || (e.interes[enfocado.id] ?? 0) < 40);
+              return (
+                <button key={g.id} type="button" disabled={bloq} className={cn(hud.gesto, bloq && hud.cuadroOff)} onClick={() => usarGesto(g)}>
+                  <Icono n={g.nivel === 2 ? 'fuego' : 'tierna'} size={26} />
+                  <span>{g.nombre}</span>
+                  {bloq && (
+                    <i className={hud.candado}>
+                      <Icono n="candado" size={13} />
+                    </i>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </>
       )}
     </>
@@ -208,24 +398,35 @@ export default function Mundo() {
 
   const mapaJSX = (
     <>
-      <h2 className={styles.h3}>A dónde ir</h2>
-      <div className={styles.mapa}>
-        {zonas.map((z) => {
+      <svg viewBox={`0 0 320 ${altoMapa}`} className={hud.ciudad} role="img" aria-label="Mapa de la ciudad">
+        <rect width="320" height={altoMapa} fill="#1d2a1f" />
+        {Array.from({ length: filas + 1 }).map((_, r) => (
+          <rect key={`h${r}`} x="0" y={r * 78 + 6} width="320" height="12" fill="#3a3f48" />
+        ))}
+        {[0, 1, 2, 3].map((c) => (
+          <rect key={`v${c}`} x={c * 98 - 6} y="0" width="12" height={altoMapa} fill="#3a3f48" />
+        ))}
+        {zonas.map((z, i) => {
+          const [x, y] = POS(i);
           const { el: hay, otros } = quien(z);
+          const sel = zonaAbierta === z;
           return (
-            <button key={z} type="button" className={cn(styles.zona, lugarAct.zona === z && styles.zonaOn)} onClick={() => setZonaAbierta(zonaAbierta === z ? null : z)}>
-              <strong>{ruta(z)}</strong>
-              <div className={styles.monitos}>
-                {lugarAct.zona === z && <Monito color="#f1c7a6" ropa="#e0457b" grande />}
-                {hay && <Monito color="#e9bf9b" ropa="#4d6fa8" grande />}
-                {otros.map((p) => (
-                  <Monito key={p.id} color={p.look.piel} ropa={p.look.ropa} />
-                ))}
-              </div>
-            </button>
+            <g key={z} onClick={() => setZonaAbierta(sel ? null : z)} style={{ cursor: 'pointer' }}>
+              <rect x={x - 38} y={y - 26} width="76" height="52" rx="6" fill={lugarAct.zona === z ? '#7a3550' : sel ? '#3d5f7a' : '#2f4a35'} stroke={sel ? '#ffd27a' : '#5b7f62'} strokeWidth={sel ? 2.500 : 1} />
+              <text x={x} y={y - 8} textAnchor="middle" fontSize="8.500" fill="#fff">
+                {ruta(z).slice(0, 14)}
+              </text>
+              {hay && <circle cx={x - 12} cy={y + 12} r="5" fill="#5b9bff" stroke="#fff" />}
+              {otros.slice(0, 3).map((o, k) => (
+                <circle key={o.id} cx={x + 2 + k * 11} cy={y + 12} r="4" fill={o.look.ropa} stroke="#fff" strokeWidth=".8" />
+              ))}
+            </g>
           );
         })}
-      </div>
+        {zonaAbierta && zonaAbierta !== lugarAct.zona && <path d={calle(yoP, POS(idxZona(zonaAbierta)))} fill="none" stroke="#ffd27a" strokeWidth="4" strokeDasharray="7 5" strokeLinecap="round" />}
+        <circle cx={yoP[0] + 14} cy={yoP[1] + 12} r="6" fill="#ff5c8a" stroke="#fff" strokeWidth="1.500" />
+        <circle cx={elP[0] - 14} cy={elP[1] + 12} r="0" />
+      </svg>
       {zonaAbierta && (
         <div className={styles.lugares}>
           {todos
@@ -245,12 +446,11 @@ export default function Mundo() {
               >
                 {l.id === e.lugar ? '• ' : ''}
                 {l.nombre}
-                {l.privado ? ' 🔒' : ''}
+                {l.privado ? ' · privado' : ''}
               </button>
             ))}
         </div>
       )}
-      <p className={styles.dim}>Rosa: tú. Azul: él. Cambiar de zona cuesta unos 20 minutos.</p>
     </>
   );
 
@@ -310,6 +510,8 @@ export default function Mundo() {
           foco={enfocado?.id ?? null}
           ella={{ gesto: gestoPorId(sc ? 'neutra' : cerca ? 'dulce' : 'neutra') ?? gestoDeEl(0, 0) }}
           onCerca={setCerca}
+          burbujas={burbujas}
+          contacto={contacto}
           onTap={(id) => {
             setFoco(id);
             setPanel('acciones');
@@ -362,8 +564,25 @@ export default function Mundo() {
         </div>
       </div>
 
-      {/* Él, en una ventanita sobre el mundo */}
-      <div className={hud.pip}>
+      {/* Su cámara a pantalla completa mientras mantengas apretado el cuadrito */}
+      {verEl && (
+        <div className={hud.verEl}>
+          <Vista3D escena={lugarEl.escena} hora={e.reloj} gente={genteEl} vista="tercera" etiqueta={`Cámara de ${e.nombre}`} />
+          <p className={hud.soltar}>Suelta para volver</p>
+        </div>
+      )}
+      <div
+        className={cn(hud.pip, verEl && hud.pipOn)}
+        onPointerDown={(ev) => {
+          ev.currentTarget.setPointerCapture(ev.pointerId);
+          setVerEl(true);
+        }}
+        onPointerUp={() => setVerEl(false)}
+        onPointerCancel={() => setVerEl(false)}
+        onContextMenu={(ev) => ev.preventDefault()}
+        role="button"
+        aria-label="Mantén apretado para ver su cámara"
+      >
         <Vista3D escena={lugarEl.escena} hora={e.reloj} gente={genteEl} vista="tercera" mini etiqueta="Él" />
         <div className={hud.piensa}>
           {lugarEl.nombre} · {el.hace}
@@ -371,41 +590,107 @@ export default function Mundo() {
         </div>
       </div>
 
+      {/* Radar tipo GTA */}
+      <button type="button" className={hud.radar} onClick={() => abrir('mapa')} aria-label="Mapa">
+        <svg viewBox="0 0 100 100" width="100%" height="100%">
+          <defs>
+            <clipPath id="rc">
+              <circle cx="50" cy="50" r="48" />
+            </clipPath>
+          </defs>
+          <g clipPath="url(#rc)">
+            <rect width="100" height="100" fill="#1d2a1f" />
+            <g transform={`translate(${50 - yoP[0] * 0.5},${50 - yoP[1] * 0.5})`}>
+              {Array.from({ length: filas + 1 }).map((_, r) => (
+                <rect key={`h${r}`} x="-60" y={r * 39 + 3} width="260" height="6" fill="#4a505c" />
+              ))}
+              {[0, 1, 2, 3].map((c) => (
+                <rect key={`v${c}`} x={c * 49 - 3} y="-60" width="6" height="260" fill="#4a505c" />
+              ))}
+              {zonas.map((z, i) => {
+                const [x, y] = POS(i);
+                return <rect key={z} x={x * 0.5 - 15} y={y * 0.5 - 11} width="30" height="22" rx="3" fill={lugarAct.zona === z ? '#7a3550' : '#2f4a35'} />;
+              })}
+              <circle cx={elP[0] * 0.5} cy={elP[1] * 0.5} r="4" fill="#5b9bff" stroke="#fff" strokeWidth="1" />
+            </g>
+          </g>
+          <circle cx="50" cy="50" r="48" fill="none" stroke="#fff" strokeOpacity=".7" strokeWidth="3" />
+          <path d="M50 40l6 14-6-3-6 3z" fill="#ff5c8a" stroke="#fff" strokeWidth="1.200" />
+        </svg>
+      </button>
+
+      {/* Avisos del sensor */}
+      <div className={hud.avisos}>
+        {seAcerca && <span className={cn(hud.aviso, hud.avisoRojo)}>{e.nombre} se acerca</span>}
+        {notaDeEl(e) && <span className={hud.aviso}>{e.nombre} te mira distinto</span>}
+        {contexto === 'gente' && <span className={hud.aviso}>Hay gente mirando</span>}
+      </div>
+
       {/* Aviso corto de lo último que pasó */}
       <p className={hud.toast} key={e.ultima}>
         {e.ultima}
       </p>
       {enfocado && !panel && (
-        <button type="button" className={hud.hablar} onClick={() => setPanel('acciones')}>
-          Hablar con {enfocado.nombre}
+        <button type="button" className={hud.hablar} onClick={() => setPanel('acciones')} aria-label={`Hablar con ${enfocado.nombre}`}>
+          <Icono n="chat" size={22} /> {enfocado.nombre}
         </button>
       )}
 
       {/* Botones abajo a la derecha */}
       <div className={hud.botones}>
-        <button type="button" className={cn(hud.boton, panel === 'acciones' && hud.botonOn)} onClick={() => abrir('acciones')}>
-          Acciones
-        </button>
-        <button type="button" className={cn(hud.boton, panel === 'mapa' && hud.botonOn)} onClick={() => abrir('mapa')}>
-          Mapa
-        </button>
-        <button type="button" className={cn(hud.boton, panel === 'memoria' && hud.botonOn)} onClick={() => abrir('memoria')}>
-          Memoria
-        </button>
-        <button type="button" className={cn(hud.boton, panel === 'mas' && hud.botonOn)} onClick={() => abrir('mas')}>
-          Más
-        </button>
+        {(
+          [
+            ['acciones', 'chat', 'Acciones'],
+            ['mapa', 'mundo', 'Mundo'],
+            ['memoria', 'libro', 'Memoria'],
+            ['mas', 'puntos', 'Más'],
+          ] as const
+        ).map(([id, ic, nom]) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(hud.boton, panel === id && hud.botonOn)}
+            onClick={() => {
+              setVistaAcc('raiz');
+              abrir(id);
+            }}
+            aria-label={nom}
+          >
+            <Icono n={ic} size={28} />
+          </button>
+        ))}
       </div>
 
       {panel && (
         <div className={hud.hoja}>
           <button type="button" className={hud.cerrar} onClick={() => setPanel(null)} aria-label="Cerrar">
-            ✕
+            <Icono n="cerrar" size={20} />
           </button>
           {panel === 'acciones' && accionesJSX}
           {panel === 'mapa' && mapaJSX}
           {panel === 'memoria' && memoriaJSX}
           {panel === 'mas' && masJSX}
+        </div>
+      )}
+
+      {rescate && (
+        <div className={hud.rescate}>
+          <p>{e.nombre} acaba de llegar</p>
+          <div>
+            {([['disimular', 'Disimular'], ['apartarme', 'Apartarme'], ['tema', 'Cambiar de tema']] as const).map(([id, t]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setRescate(false);
+                  hacer((s2) => apuro(s2, id));
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <span className={hud.cuenta} />
         </div>
       )}
 

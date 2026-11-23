@@ -140,3 +140,42 @@
   border: 2px solid #fff;
   pointer-events: none;
 }
+
+.burbuja {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3500;
+  max-width: 11rem;
+  font-family: var(--util);
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: #2b1d33;
+  background: #fff;
+  border-radius: 14px 14px 14px 3px;
+  padding: 0.4rem 0.6rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}
+.burbujaElla {
+  background: #ffe3ee;
+  border-radius: 14px 14px 3px 14px;
+}
+.corazon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3500;
+  opacity: 0;
+  pointer-events: none;
+}
+.corazon svg {
+  animation: late 0.9s ease-in-out infinite;
+}
+@keyframes late {
+  50% {
+    transform: translateY(-8px) scale(1.2);
+  }
+}

@@ -42,6 +42,10 @@ interface Props {
   onCerca?: (id: string | null) => void;
   /** reduce etiquetas y controles (ventanita) */
   mini?: boolean;
+  /** globos de texto sobre la cabeza ('ella' o el id de la persona) */
+  burbujas?: Record<string, string>;
+  /** contacto: la persona se acerca a ella y se abrazan / besan */
+  contacto?: { id: string; gesto: string; nivel: 1 | 2 } | null;
 }
 
 interface Actor {
@@ -98,12 +102,14 @@ function Chico2D({ h }: { h: Habitante }) {
 }
 
 /** Un cuarto en 3D con personas 2D que se mueven; ella camina con joystick. */
-export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onTap, hotspots = [], onHotspot, ella, onCerca, mini = false }: Props) {
+export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onTap, hotspots = [], onHotspot, ella, onCerca, mini = false, burbujas = {}, contacto = null }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const etq = useRef(new Map<string, HTMLElement>());
   const hot = useRef(new Map<string, HTMLElement>());
   const spr = useRef(new Map<string, HTMLElement>());
+  const bur = useRef(new Map<string, HTMLElement>());
+  const cor = useRef<HTMLElement | null>(null);
   const eng = useRef<{
     motor: Motor3D | null;
     cuarto: GPU[];
@@ -117,8 +123,10 @@ export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onT
     ang: number;
     cerca: string | null;
   }>({ motor: null, cuarto: [], clave: '', actores: new Map(), primera: true, cam: { pos: [0, 150, 200], obj: [0, 125, -60] }, ancho: 0, alto: 0, yo: { x: -95, z: 70, flip: 1, sx: 0, mov: false }, ang: 0, cerca: null });
-  const props = useRef({ escena, hora, gente, vista, foco, hotspots, ella, onCerca });
-  props.current = { escena, hora, gente, vista, foco, hotspots, ella, onCerca };
+  const props = useRef({ escena, hora, gente, vista, foco, hotspots, ella, onCerca, contacto });
+  props.current = { escena, hora, gente, vista, foco, hotspots, ella, onCerca, contacto };
+  const burbujas_ = useRef<Record<string, string>>({});
+  burbujas_.current = burbujas;
   const joy = useRef({ x: 0, y: 0 });
   const teclas = useRef(new Set<string>());
   const base = useRef<HTMLDivElement>(null);
@@ -216,6 +224,12 @@ export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onT
         a.hab = h;
         a.tx = slot[0];
         a.tz = slot[1];
+        const ct = P.contacto;
+        if (ct && ct.id === h.id && P.ella) {
+          const lado = ct.gesto === 'frente' ? 0 : 1;
+          a.tx = clamp(E.yo.x + (lado ? 30 : 4), LIM.x0, LIM.x1);
+          a.tz = clamp(E.yo.z + (lado ? 2 : -26), LIM.z0, LIM.z1);
+        }
       });
       E.primera = false;
 
@@ -300,12 +314,29 @@ export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onT
           a.caminando = true;
         } else a.caminando = false;
         const rebote = a.caminando ? Math.abs(Math.sin(t * 9 + a.fase)) * 7 : Math.sin(t * 1.9 + a.fase) * 0.9;
-        const sway = a.caminando ? Math.sin(t * 9 + a.fase) * 3 : Math.sin(t * 0.8 + a.fase) * 0.7;
+        let sway = a.caminando ? Math.sin(t * 9 + a.fase) * 3 : Math.sin(t * 0.8 + a.fase) * 0.7;
+        const unidos = !!P.contacto && P.contacto.id === a.hab.id && !a.caminando;
+        if (unidos) sway = Math.sin(t * 2.2) * (P.contacto!.nivel === 2 ? 6 : 3.5);
         const el = spr.current.get(a.hab.id);
         const pie = colocar(el, [a.x, 0, a.z], ALTO_MUNDO, a.flip, rebote, sway);
         if (pie) {
           if (Math.abs(pie[0] - a.sx) > 0.3 && a.caminando) a.flip = pie[0] > a.sx ? 1 : -1;
           a.sx = pie[0];
+        }
+        const bu = bur.current.get(a.hab.id);
+        if (bu) {
+          const cb = proyectar(motor.vp, [a.x, ALTO_MUNDO + 30, a.z], ancho, alto);
+          if (cb && burbujas_.current[a.hab.id]) {
+            bu.style.transform = `translate(${clamp(cb[0], 80, ancho - 80)}px, ${Math.max(cb[1], 150)}px) translate(-50%, -100%)`;
+            bu.style.opacity = '1';
+          } else bu.style.opacity = '0';
+        }
+        if (unidos && cor.current) {
+          const ch = proyectar(motor.vp, [(a.x + yo.x) / 2, ALTO_MUNDO + 20, (a.z + yo.z) / 2], ancho, alto);
+          if (ch) {
+            cor.current.style.transform = `translate(${ch[0]}px, ${ch[1]}px) translate(-50%, -100%)`;
+            cor.current.style.opacity = '1';
+          }
         }
         const e2 = etq.current.get(a.hab.id);
         const cab = proyectar(motor.vp, [a.x, ALTO_MUNDO + 8, a.z], ancho, alto);
@@ -316,7 +347,16 @@ export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onT
           } else e2.style.opacity = '0';
         }
       }
+      if (!P.contacto && cor.current) cor.current.style.opacity = '0';
       if (ella) {
+        const bue = bur.current.get('ella');
+        if (bue) {
+          const cb = proyectar(motor.vp, [yo.x, 200, yo.z], ancho, alto);
+          if (cb && burbujas_.current['ella']) {
+            bue.style.transform = `translate(${clamp(cb[0], 80, ancho - 80)}px, ${Math.max(cb[1], 150)}px) translate(-50%, -100%)`;
+            bue.style.opacity = '1';
+          } else bue.style.opacity = '0';
+        }
         const rebote = yo.mov ? Math.abs(Math.sin(t * 10)) * 8 : Math.sin(t * 1.8) * 1;
         const sway = yo.mov ? Math.sin(t * 10) * 3.5 : Math.sin(t * 0.9) * 0.8;
         const pie = colocar(spr.current.get('ella'), [yo.x, 0, yo.z], 165, yo.flip, rebote, sway);
@@ -439,6 +479,23 @@ export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onT
               {g.nota && <span>{g.nota}</span>}
             </button>
           ))}
+        {Object.entries(burbujas).map(([id, txt]) => (
+          <div
+            key={`b-${id}`}
+            ref={(el) => {
+              if (el) bur.current.set(id, el);
+              else bur.current.delete(id);
+            }}
+            className={`${styles.burbuja} ${id === 'ella' ? styles.burbujaElla : ''}`}
+          >
+            {txt}
+          </div>
+        ))}
+        <div ref={cor} className={styles.corazon} aria-hidden>
+          <svg viewBox="0 0 24 24" width="30" height="30">
+            <path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.800-8 11-8 11z" fill="#ff5c8a" stroke="#fff" strokeWidth="1.2" />
+          </svg>
+        </div>
         {!mini &&
           hs.map((h) => (
             <button
