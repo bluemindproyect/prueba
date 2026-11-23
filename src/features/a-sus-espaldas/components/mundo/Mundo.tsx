@@ -88,7 +88,6 @@ export default function Mundo() {
   const [confirmar, setConfirmar] = useState(false);
   const [panel, setPanel] = useState<'acciones' | 'mapa' | 'memoria' | 'mas' | null>(null);
   const [cerca, setCerca] = useState<string | null>(null);
-  const [verEl, setVerEl] = useState(false);
   const [vistaAcc, setVistaAcc] = useState<'raiz' | 'hablar' | 'menu' | 'gestos'>('raiz');
   const [menuSel, setMenuSel] = useState<string | null>(null);
   const [herr, setHerr] = useState<'cerca' | 'telefono'>('cerca');
@@ -561,32 +560,6 @@ export default function Mundo() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Su cámara a pantalla completa mientras mantengas apretado el cuadrito */}
-      {verEl && (
-        <div className={hud.verEl}>
-          <Vista3D escena={lugarEl.escena} hora={e.reloj} gente={genteEl} vista="tercera" etiqueta={`Cámara de ${e.nombre}`} />
-          <p className={hud.soltar}>Suelta para volver</p>
-        </div>
-      )}
-      <div
-        className={cn(hud.pip, verEl && hud.pipOn)}
-        onPointerDown={(ev) => {
-          ev.currentTarget.setPointerCapture(ev.pointerId);
-          setVerEl(true);
-        }}
-        onPointerUp={() => setVerEl(false)}
-        onPointerCancel={() => setVerEl(false)}
-        onContextMenu={(ev) => ev.preventDefault()}
-        role="button"
-        aria-label="Mantén apretado para ver su cámara"
-      >
-        <Vista3D escena={lugarEl.escena} hora={e.reloj} gente={genteEl} vista="tercera" mini etiqueta="Él" />
-        <div className={hud.piensa}>
-          {lugarEl.nombre} · {el.hace}
-          <i>«{piensa}»</i>
         </div>
       </div>
 
