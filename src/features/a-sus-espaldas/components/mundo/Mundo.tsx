@@ -131,7 +131,7 @@ export default function Mundo() {
   const lugarEl = lugarPorId(e.ciclo, el.lugar);
   const PIEL_EL = { piel: '#e9bf9b', pelo: '#2b1d14', ropa: '#5a7da8', pantalon: '#2f3445' };
   const gestoOtro = (p: Persona) => gestoPorId(GESTO_OTRO[p.rasgo]) ?? gestoDeEl(0, 0);
-  const habEl = (nota?: string): Habitante => ({ id: 'el', nombre: e.nombre, ...PIEL_EL, gesto: gestoEl, abatido: et >= 4, nota });
+  const habEl = (nota?: string): Habitante => ({ id: 'el', nombre: e.nombre, ...PIEL_EL, gesto: gestoEl, abatido: et >= 4, nota, tocable: true });
   const gentePov: Habitante[] = [
     ...(elAquiAhora ? [habEl(el.hace)] : []),
     ...aqui.map(({ p, hace }) => ({ id: p.id, nombre: p.nombre, piel: p.look.piel, pelo: p.look.pelo, ropa: p.look.ropa, pantalon: p.look.pantalon, gesto: gestoOtro(p), nota: hace, tocable: true })),
@@ -142,6 +142,8 @@ export default function Mundo() {
   ];
   const hotspots: ('sabanas' | 'banar' | 'esconder')[] = lugarAct.escena === 'cama' ? ['sabanas'] : lugarAct.escena === 'bano' ? ['banar'] : lugarAct.escena === 'sotano' ? ['esconder'] : [];
   const sc = e.escena;
+  const conEl = (foco ?? cerca) === 'el' && elAquiAhora && !enfocado;
+  const hayAlguien = !!enfocado || conEl;
   const otrosAqui = aqui.length;
   const contexto: 'solas' | 'gente' | 'el' = elAquiAhora ? 'el' : otrosAqui > 1 ? 'gente' : 'solas';
   const seAcerca = !elAquiAhora && tramoEl({ ...e, reloj: e.reloj + 12 }).lugar === e.lugar;
@@ -214,6 +216,14 @@ export default function Mundo() {
     setVistaAcc('raiz');
   };
   const usarGesto = (g: (typeof GESTOS_CERCANIA)[number]) => {
+    if (conEl) {
+      setContacto({ id: 'el', gesto: g.pos, nivel: g.nivel });
+      temporizadores.current.push(window.setTimeout(() => setContacto(null), 6000));
+      hacer(ternura);
+      setPanel(null);
+      setVistaAcc('raiz');
+      return;
+    }
     if (!enfocado) return;
     setContacto({ id: enfocado.id, gesto: g.pos, nivel: g.nivel });
     temporizadores.current.push(window.setTimeout(() => setContacto(null), 6000));
@@ -240,14 +250,14 @@ export default function Mundo() {
         <span className={cn(hud.sensor, contexto === 'solas' && hud.sensorOk, contexto === 'gente' && hud.sensorAviso, contexto === 'el' && hud.sensorPeligro)}>
           <Icono n={contexto === 'solas' ? 'candado' : 'ojo'} size={16} /> {contexto === 'solas' ? 'A solas' : contexto === 'gente' ? 'Con gente cerca' : 'Él está aquí'}
         </span>
-        {enfocado && <span className={hud.con}>{enfocado.nombre}</span>}
+        {hayAlguien && <span className={hud.con}>{enfocado?.nombre ?? e.nombre}</span>}
       </div>
 
       {vistaAcc === 'raiz' && (
         <>
           <div className={hud.cuatro}>
-            {cuadro('chat', 'Hablar', () => setVistaAcc('hablar'), undefined, !enfocado && herr === 'cerca' && personas(e.ciclo).length === 0)}
-            {cuadro('cara', 'Gestos', () => setVistaAcc('gestos'), undefined, !enfocado)}
+            {cuadro('chat', 'Hablar', () => setVistaAcc('hablar'), undefined, conEl || (!enfocado && herr === 'cerca'))}
+            {cuadro('cara', 'Gestos', () => setVistaAcc('gestos'), undefined, !hayAlguien)}
             {cuadro(
               'cara',
               'Mostrar',
@@ -376,7 +386,7 @@ export default function Mundo() {
           <div className={hud.barra}>{volver('raiz')}</div>
           <div className={hud.gestos}>
             {GESTOS_CERCANIA.map((g) => {
-              const bloq = g.nivel === 2 && (!enfocado || (e.interes[enfocado.id] ?? 0) < 40);
+              const bloq = g.nivel === 2 && (conEl ? e.tierno < 40 : !enfocado || (e.interes[enfocado.id] ?? 0) < 40);
               return (
                 <button key={g.id} type="button" disabled={bloq} className={cn(hud.gesto, bloq && hud.cuadroOff)} onClick={() => usarGesto(g)}>
                   <Icono n={g.nivel === 2 ? 'fuego' : 'tierna'} size={26} />
@@ -603,10 +613,15 @@ export default function Mundo() {
       <p className={hud.toast} key={e.ultima}>
         {e.ultima}
       </p>
-      {enfocado && !panel && (
-        <button type="button" className={hud.hablar} onClick={() => setPanel('acciones')} aria-label={`Hablar con ${enfocado.nombre}`}>
-          <Icono n="chat" size={22} /> {enfocado.nombre}
+      {hayAlguien && !panel && (
+        <button type="button" className={hud.hablar} onClick={() => setPanel('acciones')} aria-label={`Hablar con ${enfocado?.nombre ?? e.nombre}`}>
+          <Icono n="chat" size={22} /> {enfocado?.nombre ?? e.nombre}
         </button>
+      )}
+      {!hayAlguien && !panel && !sc && (
+        <p className={hud.guia}>
+          Mueve el círculo de abajo para caminar hasta alguien. Cuando estés cerca aparece su nombre: tócalo para abrazarlo, hablarle o seducirlo.
+        </p>
       )}
 
       {/* Botones abajo a la derecha */}
