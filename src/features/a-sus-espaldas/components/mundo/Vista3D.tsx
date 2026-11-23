@@ -109,7 +109,7 @@ export function Vista3D({ escena, hora, gente, vista, foco = null, etiqueta, onT
   const hot = useRef(new Map<string, HTMLElement>());
   const spr = useRef(new Map<string, HTMLElement>());
   const bur = useRef(new Map<string, HTMLElement>());
-  const cor = useRef<HTMLElement | null>(null);
+  const cor = useRef<HTMLDivElement | null>(null);
   const eng = useRef<{
     motor: Motor3D | null;
     cuarto: GPU[];
