@@ -386,7 +386,7 @@ export default function Mundo() {
           <div className={hud.barra}>{volver('raiz')}</div>
           <div className={hud.gestos}>
             {GESTOS_CERCANIA.map((g) => {
-              const bloq = g.nivel === 2 && (conEl ? e.tierno < 40 : !enfocado || (e.interes[enfocado.id] ?? 0) < 40);
+              const bloq = false;
               return (
                 <button key={g.id} type="button" disabled={bloq} className={cn(hud.gesto, bloq && hud.cuadroOff)} onClick={() => usarGesto(g)}>
                   <Icono n={g.nivel === 2 ? 'fuego' : 'tierna'} size={26} />
