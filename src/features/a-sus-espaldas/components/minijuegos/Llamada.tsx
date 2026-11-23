@@ -1,22 +1,21 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
-  HEAR_AT,
-  HIM_SECS,
-  LOUD,
-  SAFE,
-  WINDOW_SECS,
-  callResult,
-  drive,
-  fillName,
-  replyLength,
-  startCall,
-  stepCall,
-} from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
+  animoDe,
+  colgar,
+  comentar,
+  nivelDe,
+  pulsoDe,
+  resultado,
+  responder,
+  setRitmo,
+  startCall2,
+  tick2,
+} from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
+import type { Call2, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
-import type { MiniIntent } from '@/features/a-sus-espaldas/lib/types';
+import type { Tono } from '@/features/a-sus-espaldas/lib/contenido';
 import { cn } from '@/lib/cn';
 import styles from './llamada.module.css';
 
@@ -26,275 +25,189 @@ interface LlamadaProps {
   onFinish: (result: CallResult) => void;
 }
 
-const MAX_ANGLE = 70;
-const CX = 100;
-const CY = 100;
-const R = 78;
-
-const point = (deg: number): [number, number] => [CX + R * Math.sin((deg * Math.PI) / 180), CY - R * Math.cos((deg * Math.PI) / 180)];
-
-function arc(a: number, b: number): string {
-  const [x1, y1] = point(a);
-  const [x2, y2] = point(b);
-  return `M${x1.toFixed(1)} ${y1.toFixed(1)} A${R} ${R} 0 0 ${b > a ? 1 : 0} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-}
-
-const SAFE_DEG = SAFE * MAX_ANGLE;
-const LOUD_DEG = LOUD * MAX_ANGLE;
-
-const INTENTS: ReadonlyArray<{ id: MiniIntent; title: string; hint: string }> = [
-  { id: 'ocultar', title: 'Que no se note', hint: 'Mantén la aguja en el centro. Que no oiga nada raro.' },
-  {
-    id: 'herir',
-    title: 'Que lo sienta',
-    hint: 'Deja que la aguja suba a la franja rosa mientras hablas: que oiga tu voz temblar. Cuanto más lo sienta, más ganas. Si te pasas, lo entiende todo.',
-  },
+const RITMOS: ReadonlyArray<{ id: Ritmo; label: string }> = [
+  { id: 'lento', label: 'Despacio' },
+  { id: 'firme', label: 'Firme' },
+  { id: 'rapido', label: 'Rápido' },
 ];
 
-const END_TEXT = {
-  limpio: 'Cuelga tranquilo.',
-  dudas: 'Cuelga callado. Algo se le quedó.',
-  sabe: 'Cuelga sin decir nada más.',
+const TONO_TAG: Record<Tono, string> = {
+  calma: 'con calma',
+  evade: 'evadir',
+  tiembla: 'voz temblorosa',
+  verdad: 'media verdad',
+  choca: 'cambiar la historia',
+};
+
+const ANIMO_LABEL = {
+  tranquilo: 'tranquilo',
+  inquieto: 'inquieto',
+  desconfiado: 'desconfiado',
+  herido: 'herido',
 } as const;
 
-/** Botón que solo cuenta mientras lo mantienes apretado. */
-function HoldButton(props: {
-  label: string;
-  hint: string;
-  side: 'left' | 'right';
-  on: boolean;
-  onChange: (on: boolean) => void;
-}) {
-  const { label, hint, side, on, onChange } = props;
-  const down = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    onChange(true);
-  };
-  const up = () => onChange(false);
-  return (
-    <button
-      type="button"
-      className={cn(styles.hold, styles[side], on && styles.holdOn)}
-      aria-pressed={on}
-      onPointerDown={down}
-      onPointerUp={up}
-      onPointerCancel={up}
-      onLostPointerCapture={up}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      <strong>{label}</strong>
-      <small>{hint}</small>
-    </button>
-  );
-}
+const fill = (text: string, name: string): string => text.replace(/\{n\}/g, name);
 
 export function Llamada({ name, onFinish }: LlamadaProps) {
-  // Primero eliges qué quieres lograr; la llamada empieza después.
-  const [intent, setIntent] = useState<MiniIntent | null>(null);
-  const [s, setS] = useState(() => startCall());
-  const [talk, setTalk] = useState(false);
-  const [press, setPress] = useState(false);
-
-  // El bucle lee los botones desde refs para no reiniciarse en cada toque.
-  const talkRef = useRef(false);
-  const pressRef = useRef(false);
-  const reduceRef = useRef(false);
+  const [s, setS] = useState<Call2>(() => startCall2());
+  const sRef = useRef(s);
+  const logEnd = useRef<HTMLDivElement>(null);
   const finishRef = useRef(onFinish);
   finishRef.current = onFinish;
-  const sRef = useRef(s);
-  sRef.current = s;
 
-  const setTalking = (on: boolean) => {
-    talkRef.current = on;
-    setTalk(on);
-  };
-  const setPressing = (on: boolean) => {
-    pressRef.current = on;
-    setPress(on);
+  const apply = (f: (prev: Call2) => Call2) => {
+    sRef.current = f(sRef.current);
+    setS(sRef.current);
   };
 
+  // El tiempo: cada décima de segundo sube la excitación y avanza la conversación.
   useEffect(() => {
-    if (!intent) return;
-    reduceRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let raf = 0;
-    let last = performance.now();
-    const loop = (now: number) => {
-      const dt = (now - last) / 1000;
-      last = now;
-      setS((prev) => stepCall(prev, { talk: talkRef.current, press: pressRef.current }, dt));
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [intent]);
-
-  const choose = (id: MiniIntent) => {
-    setS(startCall(undefined, id));
-    setIntent(id);
-  };
-
-  // Teclado, para probarlo en la computadora: ← nivelar, → hablar.
-  useEffect(() => {
-    const map = (e: KeyboardEvent): 'talk' | 'press' | null =>
-      e.key === 'ArrowRight' || e.key === 'd' ? 'talk' : e.key === 'ArrowLeft' || e.key === 'a' ? 'press' : null;
-    const onKey = (down: boolean) => (e: KeyboardEvent) => {
-      const k = map(e);
-      if (!k) return;
-      e.preventDefault();
-      if (k === 'talk') {
-        talkRef.current = down;
-        setTalk(down);
-      } else {
-        pressRef.current = down;
-        setPress(down);
-      }
-    };
-    const kd = onKey(true);
-    const ku = onKey(false);
-    window.addEventListener('keydown', kd);
-    window.addEventListener('keyup', ku);
-    return () => {
-      window.removeEventListener('keydown', kd);
-      window.removeEventListener('keyup', ku);
-    };
+    const id = window.setInterval(() => {
+      if (!document.hidden) apply((prev) => tick2(prev, 0.1));
+    }, 100);
+    return () => window.clearInterval(id);
   }, []);
 
-  // Al terminar, un momento para ver cómo cuelga y se entrega el resultado.
-  const done = s.phase === 'done';
   useEffect(() => {
-    if (!done) return;
-    talkRef.current = false;
-    pressRef.current = false;
-    const id = window.setTimeout(() => finishRef.current(callResult(sRef.current)), 2000);
+    if (s.fase !== 'fin') return;
+    const id = window.setTimeout(() => finishRef.current(resultado(sRef.current)), 2400);
     return () => window.clearTimeout(id);
-  }, [done]);
+  }, [s.fase]);
 
-  const line = s.script[Math.min(s.idx, s.script.length - 1)];
-  const len = replyLength(s);
-  const d = drive(s.t, s.phi);
-  const sway = (s.needle * 4 + Math.sin(s.t * 6) * d * 1.2) * (reduceRef.current ? 0.25 : 1);
-  const angle = s.needle * MAX_ANGLE;
-  const bpm = Math.round(66 + s.exposure * 0.9);
-  const hold = s.phase === 'you' ? Math.max(0, 1 - s.phaseT / WINDOW_SECS) : 0;
-  const himText = fillName(line.him, name);
-  const himShown = himText.slice(0, Math.floor(himText.length * Math.min(1, (s.phaseT / HIM_SECS) * 1.3)));
-  const said = Math.floor(s.chars);
-  const result = callResult(s);
-  const verdict = result.verdict;
-  const hurting = s.intent === 'herir';
-  const endText =
-    hurting && result.hurt >= 60
-      ? 'Cuelga sin decir nada. Se queda con tu voz en la cabeza.'
-      : hurting && result.hurt >= 25
-        ? 'Cuelga pensativo. Algo se le quedó.'
-        : hurting && verdict !== 'sabe'
-          ? 'Cuelga tranquilo. No sintió nada.'
-          : END_TEXT[verdict];
+  useEffect(() => {
+    logEnd.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [s.log.length]);
 
-  if (!intent) {
-    return (
-      <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Llamada de ${name}`}>
-        <div className={styles.choose}>
-          <p className={styles.kicker}>Llamada entrante</p>
-          <h2 className={styles.who}>{name}</h2>
-          <p className={styles.ask}>Antes de contestar: ¿qué quieres que pase?</p>
-          {INTENTS.map((opt) => (
-            <button key={opt.id} type="button" className={cn(styles.choice, styles[opt.id])} onClick={() => choose(opt.id)}>
-              <strong>{opt.title}</strong>
-              <small>{opt.hint}</small>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const nivel = nivelDe(s);
+  const animo = animoDe(s.sosp, s.dano);
+  const bpm = pulsoDe(s);
+  const preguntando = (s.fase === 'pregunta' || s.fase === 'quefue') && s.pregunta;
+  const rapido = s.ritmo === 'rapido';
 
   return (
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={`Llamada de ${name}`}>
-      <div className={styles.sway} style={{ transform: `rotate(${sway.toFixed(2)}deg)` }}>
+    <div className={styles.overlay} role="dialog" aria-label="Llamada">
+      <div className={cn(styles.sheet, rapido && styles.shake)}>
         <header className={styles.head}>
           <div>
             <p className={styles.kicker}>Llamada entrante</p>
             <h2 className={styles.who}>{name}</h2>
           </div>
-          <div className={styles.pulse} aria-label={`Pulso de ${name}: ${bpm}`}>
-            <span className={styles.beat} style={{ animationDuration: `${(60 / bpm).toFixed(2)}s` }} aria-hidden="true">
+          <div className={styles.pulse} aria-label={`Pulso ${bpm}`}>
+            <span className={styles.beat} style={{ animationDuration: `${(60 / bpm).toFixed(2)}s` }}>
               ♥
             </span>
             <span>{bpm}</span>
+            <span className={styles.mood}>{ANIMO_LABEL[animo]}</span>
           </div>
         </header>
 
-        <div className={styles.meter} aria-label="Lo que él oye">
-          <span className={styles.meterLabel}>Lo que él oye</span>
-          <div className={styles.track}>
-            <div className={cn(styles.fill, s.exposure >= HEAR_AT[1] && styles.fillHot)} style={{ width: `${s.exposure}%` }} />
-            {HEAR_AT.map((at) => (
-              <i key={at} className={styles.tick} style={{ left: `${at}%` }} />
-            ))}
+        <section className={styles.him} aria-label="Lo que pasa dentro de él">
+          <p className={styles.thinks}>«{fill(s.piensa || '…', name)}»</p>
+          <p className={styles.does}>{fill(s.hace, name)}</p>
+          <p className={styles.imagines}>{fill(s.imagina, name)}</p>
+          <div className={styles.meters}>
+            <Meter label="Lo que sospecha" value={s.sosp} tone="warn" />
+            <Meter label="Cuánto le duele" value={s.dano} tone="hurt" />
           </div>
-        </div>
+        </section>
 
-        {hurting && (
-          <div className={styles.meter} aria-label="Cuánto lo siente">
-            <span className={styles.meterLabel}>Cuánto lo siente</span>
-            <div className={styles.track}>
-              <div className={styles.hurtFill} style={{ width: `${s.hurt}%` }} />
-            </div>
-          </div>
-        )}
-
-        <div className={styles.chat} aria-live="polite">
-          {s.log.slice(-4).map((l, i) => (
-            <p key={`${s.log.length}-${i}`} className={cn(styles.line, l.who === 'him' ? styles.him : styles.you, l.heard && styles.heard, l.cut && styles.cut)}>
-              <span>{l.who === 'him' ? name : 'Tú'}</span>
-              {fillName(l.text, name)}
+        <section className={styles.log} aria-live="polite">
+          {s.log.slice(-8).map((l, i) => (
+            <p
+              key={`${s.log.length - 8 + i}-${l.text}`}
+              className={cn(
+                styles.line,
+                l.who === 'el' && styles.lineHim,
+                l.who === 'el' && l.tono === 'oyo' && styles.lineHeard,
+                l.who === 'ella' && styles.lineYou,
+                l.who === 'ella' && l.tono === 'oyo' && styles.lineLoud,
+                l.who === 'ritmo' && styles.lineRhythm,
+                l.who === 'nota' && styles.lineNote,
+              )}
+            >
+              {fill(l.text, name)}
             </p>
           ))}
-          {s.phase === 'him' && (
-            <p className={cn(styles.line, styles.him, styles.now)}>
-              <span>{name}</span>
-              {himShown}
-            </p>
+          <div ref={logEnd} />
+        </section>
+
+        <section className={styles.her} aria-label="Tu lado">
+          <div className={styles.excit} role="meter" aria-valuemin={1} aria-valuemax={8} aria-valuenow={nivel} aria-label="Excitación">
+            {Array.from({ length: 8 }, (_, i) => (
+              <span key={i} className={cn(styles.seg, i < nivel && styles.segOn, i === nivel - 1 && styles.segTop)} />
+            ))}
+            <span className={styles.excitNum}>{nivel}/8</span>
+          </div>
+          <p className={cn(styles.narra, rapido && styles.narraHot)}>{s.narra}</p>
+          <div className={styles.rhythm} role="group" aria-label="Qué hace el otro">
+            {RITMOS.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={cn(styles.rbtn, s.ritmo === r.id && styles.rbtnOn)}
+                aria-pressed={s.ritmo === r.id}
+                disabled={s.fase === 'fin' || s.fase === 'comenta'}
+                onClick={() => apply((p) => setRitmo(p, r.id))}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          {s.dano >= 20 && <p className={styles.pobre}>{s.pobre}</p>}
+        </section>
+
+        <section className={styles.actions}>
+          {preguntando && s.pregunta && (
+            <div className={styles.opts}>
+              {s.pregunta.opciones.map((o, i) => (
+                <button key={`${i}-${o.texto}`} type="button" className={styles.opt} onClick={() => apply((p) => responder(p, i))}>
+                  <small className={styles.tag}>{TONO_TAG[o.tono]}</small>
+                  <span>{fill(o.texto, name)}</span>
+                </button>
+              ))}
+            </div>
           )}
-          {s.phase === 'you' && (
-            <div className={cn(styles.line, styles.you, styles.now)}>
-              <span>{hurting ? 'Tú · mantén «Hablar» y deja que tiemble' : 'Tú · mantén «Hablar»'}</span>
-              <p className={styles.reply}>
-                <em>{line.you.slice(0, said)}</em>
-                {line.you.slice(said, len)}
-              </p>
-              <div className={styles.window}>
-                <i style={{ width: `${hold * 100}%` }} />
+          {s.fase === 'comenta' && s.prompt && (
+            <div className={styles.prompt}>
+              <p className={styles.promptKick}>{s.prompt.nivel >= 8 ? 'Ya viene, ya no te aguantas' : `Nivel ${s.prompt.nivel}: se te escapa`}</p>
+              <p className={styles.promptText}>«{s.prompt.texto}»</p>
+              <div className={styles.row}>
+                <button type="button" className={cn(styles.big, styles.bigHot)} onClick={() => apply((p) => comentar(p, true))}>
+                  {s.prompt.nivel >= 8 ? 'Que se oiga' : 'Decirlo'}
+                </button>
+                <button type="button" className={styles.big} onClick={() => apply((p) => comentar(p, false))}>
+                  {s.prompt.nivel >= 8 ? 'Tragártelo' : 'Callarlo'}
+                </button>
               </div>
             </div>
           )}
-          {done && <p className={cn(styles.line, styles.end)}>{endText}</p>}
-        </div>
-
-        <svg className={styles.dial} viewBox="0 0 200 112" role="img" aria-label="Aguja de nivel">
-          <path d={arc(-MAX_ANGLE, -LOUD_DEG)} className={styles.zLoud} />
-          <path d={arc(-LOUD_DEG, -SAFE_DEG)} className={styles.zWarn} />
-          <path d={arc(-SAFE_DEG, SAFE_DEG)} className={styles.zSafe} />
-          <path d={arc(SAFE_DEG, LOUD_DEG)} className={styles.zWarn} />
-          <path d={arc(LOUD_DEG, MAX_ANGLE)} className={styles.zLoud} />
-          {hurting && (
-            <>
-              <path d={arc(-LOUD_DEG, -SAFE_DEG)} className={styles.zBand} />
-              <path d={arc(SAFE_DEG, LOUD_DEG)} className={styles.zBand} />
-            </>
+          {s.fase === 'cuelga' && (
+            <div className={styles.prompt}>
+              <p className={styles.promptKick}>Se acaba la llamada</p>
+              <div className={styles.row}>
+                <button type="button" className={styles.big} onClick={() => apply((p) => colgar(p, 'ella'))}>
+                  Cuelgo yo
+                </button>
+                <button type="button" className={styles.big} onClick={() => apply((p) => colgar(p, 'el'))}>
+                  Lo dejo colgar
+                </button>
+              </div>
+            </div>
           )}
-          <g transform={`rotate(${angle.toFixed(1)} ${CX} ${CY})`}>
-            <line x1={CX} y1={CY} x2={CX} y2={CY - R + 8} className={styles.needle} />
-          </g>
-          <circle cx={CX} cy={CY} r={6} className={styles.hub} />
-        </svg>
+          {s.fase === 'reaccion' && <p className={styles.wait}>Te escucha…</p>}
+          {s.fase === 'fin' && <p className={styles.wait}>{s.colgo === 'el' ? 'Cuelga.' : 'Cuelgas.'}</p>}
+        </section>
+      </div>
+    </div>
+  );
+}
 
-        <div className={styles.controls}>
-          <HoldButton side="left" label="Nivelar" hint="mantén para bajar la aguja" on={press} onChange={setPressing} />
-          <HoldButton side="right" label="Hablar" hint="mantén para contestar" on={talk} onChange={setTalking} />
-        </div>
-        <p className={styles.keys}>Teclado: ← nivelar · → hablar</p>
+function Meter({ label, value, tone }: { label: string; value: number; tone: 'warn' | 'hurt' }) {
+  return (
+    <div className={styles.meter}>
+      <span className={styles.meterLabel}>{label}</span>
+      <div className={styles.track}>
+        <div className={cn(styles.fill, tone === 'hurt' && styles.fillHurt)} style={{ width: `${Math.min(100, value)}%` }} />
       </div>
     </div>
   );

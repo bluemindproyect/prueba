@@ -132,6 +132,19 @@ export interface CallResult {
   missed: number;
   hangup: boolean;
   seconds: number;
+  /** solo en la llamada con decisiones */
+  /** nivel de excitación más alto que alcanzó (1 a 8) */
+  excit?: number;
+  /** cuántos comentarios dijiste en voz alta */
+  dijo?: number;
+  /** cuántos te callaste */
+  calló?: number;
+  /** cómo fue el final: lo oyó, lo ocultaste o no llegaste */
+  climax?: 'oyo' | 'oculto' | 'no';
+  /** quién colgó */
+  colgo?: 'ella' | 'el';
+  /** cuánto sospecha él al final (0 a 100) */
+  sosp?: number;
 }
 
 export type Rng = () => number;

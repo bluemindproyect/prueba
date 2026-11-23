@@ -329,8 +329,13 @@ export function playCall(
   const stale = act.lvl < before - 1;
   const hurting = result.intent === 'herir';
   const k = hurting ? result.hurt / 100 : 0; // qué tanto lo sintió, de 0 a 1
+  // Lo que te dio la llamada a ti: lo alto que llegaste, lo que dijiste en voz alta y cómo terminó.
+  const thrill =
+    ((result.excit ?? 1) - 1) / 14 +
+    (result.dijo ?? 0) * 0.04 +
+    (result.climax === 'oyo' ? 0.5 : result.climax === 'oculto' ? 0.25 : 0);
   // Que él lo sienta te da más satisfacción: hasta el doble.
-  const gain = Math.max(1, Math.round(act.sat * target.ms * (stale ? 0.5 : 1) * (1 + 0.15 * n) * (1 + k)));
+  const gain = Math.max(1, Math.round(act.sat * target.ms * (stale ? 0.5 : 1) * (1 + 0.15 * n) * (1 + k + thrill)));
   const short = fill(act.txt, name, target);
   const det = fill(act.det, name, target);
   let tail = pickOne(mezcla([CALL_TAIL[verdict]], poolCierres(verdict)), rng);
@@ -407,6 +412,9 @@ export function playCall(
         : { text: 'no logró sentirlo', tone: '' },
     );
   }
+  if (result.climax === 'oyo') chips.push({ text: 'acabaste y él lo oyó', tone: 'him' });
+  else if (result.climax === 'oculto') chips.push({ text: 'acabaste en silencio', tone: 'up' });
+  if ((result.dijo ?? 0) > 0) chips.push({ text: `se te escapó ×${result.dijo}`, tone: 'up' });
   if (n > 0) chips.push({ text: `combo ×${n + 1}`, tone: 'up' });
   if (result.heard > 0) chips.push({ text: `oyó ruidos ×${result.heard}`, tone: 'bad' });
   if (result.cuts + result.missed > 0) chips.push({ text: `te cortaste ×${result.cuts + result.missed}`, tone: 'bad' });

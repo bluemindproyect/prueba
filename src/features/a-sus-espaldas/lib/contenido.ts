@@ -22,6 +22,63 @@ export interface Dialogo {
 
 type Etapa = 'apertura' | 'medio' | 'cierre';
 
+export type Tono = 'calma' | 'evade' | 'tiembla' | 'verdad' | 'choca';
+
+export interface Opcion {
+  tono: Tono;
+  /** lo que afirma sobre dónde está (solo en las primeras preguntas) */
+  hecho: string;
+  texto: string;
+}
+
+export interface Pregunta {
+  id: string;
+  texto: string;
+  tema: string;
+  /** solo sale si antes dijiste estar en este lugar */
+  requiere?: string;
+  /** `inicio`: solo para abrir la llamada */
+  etapa?: string;
+  opciones: Opcion[];
+}
+
+/** Lo que llega de la base de datos para la llamada nueva (clase `llamada2`). */
+export interface PoolLlamada {
+  preguntas: Pregunta[];
+  quefue: Pregunta[];
+  reacciones: Record<string, string[]>;
+  comentarios: Record<string, string[]>;
+  oyo: Record<string, string[]>;
+  imagina: Record<string, string[]>;
+  pobrecito: Record<string, string[]>;
+  ritmo: Record<string, string[]>;
+  despedida: Record<string, string[]>;
+}
+
+const vacioLlamada = (): PoolLlamada => ({
+  preguntas: [],
+  quefue: [],
+  reacciones: {},
+  comentarios: {},
+  oyo: {},
+  imagina: {},
+  pobrecito: {},
+  ritmo: {},
+  despedida: {},
+});
+
+function parseOpciones(raw: unknown): Opcion[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Opcion[] = [];
+  for (const item of raw) {
+    const [tono, hecho, ...rest] = String(item).split('|');
+    const texto = rest.join('|').trim();
+    if (!texto || !['calma', 'evade', 'tiembla', 'verdad', 'choca'].includes(tono)) continue;
+    out.push({ tono: tono as Tono, hecho: hecho.trim(), texto });
+  }
+  return out;
+}
+
 interface Pool {
   acts: Act[];
   dialogos: Record<Etapa, Dialogo[]>;
@@ -30,6 +87,7 @@ interface Pool {
   pensamientos: Record<string, string[]>;
   cierres: Record<string, string[]>;
   sentimientos: Record<string, string[]>;
+  llamada: PoolLlamada;
 }
 
 const vacio = (): Pool => ({
@@ -40,6 +98,7 @@ const vacio = (): Pool => ({
   pensamientos: {},
   cierres: {},
   sentimientos: {},
+  llamada: vacioLlamada(),
 });
 
 let pool: Pool = vacio();
@@ -96,7 +155,40 @@ export function cargarContenido(rows: readonly ContenidoRow[]): number {
     if (!text) continue;
     const cond = row.condiciones ?? {};
     const datos = row.datos ?? {};
-    if (row.tipo === 'accion') {
+    if (row.tipo === 'minijuego' && datos.minijuego === 'llamada2') {
+      const clase = str(datos.clase);
+      const L = next.llamada;
+      if (clase === 'pregunta' || clase === 'quefue') {
+        const opciones = parseOpciones(datos.opciones);
+        if (opciones.length >= 2) {
+          const q: Pregunta = {
+            id: `${clase}-${(clase === 'pregunta' ? L.preguntas : L.quefue).length}-${text.slice(0, 12)}`,
+            texto: text,
+            tema: str(cond.tema),
+            requiere: str(cond.requiere) || undefined,
+            etapa: str(cond.etapa) || undefined,
+            opciones,
+          };
+          (clase === 'pregunta' ? L.preguntas : L.quefue).push(q);
+          n++;
+        }
+      } else {
+        const map: Record<string, [Record<string, string[]>, string]> = {
+          reaccion: [L.reacciones, str(cond.tono)],
+          comentario: [L.comentarios, String(cond.nivel ?? '')],
+          oyo: [L.oyo, str(cond.fuerza)],
+          imagina: [L.imagina, str(cond.sosp)],
+          pobrecito: [L.pobrecito, str(cond.hum)],
+          ritmo: [L.ritmo, str(cond.ritmo)],
+          despedida: [L.despedida, `${str(cond.quien)}-${str(cond.animo)}`],
+        };
+        const target = map[clase];
+        if (target && target[1]) {
+          push(target[0], target[1], text);
+          n++;
+        }
+      }
+    } else if (row.tipo === 'accion') {
       accionRows.push({ ...row, datos, condiciones: cond });
       n++;
     } else if (row.tipo === 'minijuego' && datos.minijuego === 'llamada') {
@@ -135,6 +227,7 @@ export function cargarContenido(rows: readonly ContenidoRow[]): number {
 export const mezcla = (fijo: readonly string[], extra: readonly string[] | undefined): readonly string[] =>
   extra && extra.length ? [...fijo, ...extra] : fijo;
 
+export const poolLlamada = (): PoolLlamada => pool.llamada;
 export const poolDialogos = (etapa: Etapa): readonly Dialogo[] => pool.dialogos[etapa];
 export const poolOye = (umbral: 0 | 1 | 2): readonly string[] => pool.oye[umbral];
 export const poolSilencio = (): readonly string[] => pool.silencio;
