@@ -123,6 +123,9 @@ export default function Game() {
         <button type="button" className={styles.ghost} onClick={onReset}>
           {confirmReset ? 'Toca otra vez para confirmar' : 'Borrar todo y empezar de cero'}
         </button>
+        <Link href="/a-sus-espaldas/palabras" className={styles.back}>
+          Tus palabras (agregar frases propias)
+        </Link>
         <Link href="/" className={styles.back}>
           ← Todos los juegos
         </Link>

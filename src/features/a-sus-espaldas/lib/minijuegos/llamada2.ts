@@ -1,4 +1,5 @@
 import { mezcla, poolLlamada } from '../contenido';
+import { lineasDe } from '../palabras';
 import type { Opcion, Pregunta, Tono } from '../contenido';
 import type { CallResult, Rng } from './llamada';
 import type { CallVerdict } from '../types';
@@ -250,10 +251,10 @@ function siguientePregunta(s: Pick<Call2, 'usadas' | 'hechos' | 'sosp'>, rng: Rn
 function refrescar(s: Call2, rng: Rng): void {
   const L = poolLlamada();
   const banda = bandaSosp(s.sosp);
-  s.imagina = pickText(L.imagina[banda], FIJAS_TEXTO.imagina[banda], rng);
+  s.imagina = pickText([...(L.imagina[banda] ?? []), ...lineasDe('imagina')], FIJAS_TEXTO.imagina[banda], rng);
   const animo = animoDe(s.sosp, s.dano);
   s.hace = pickText(L.ritmo[`x-${animo}`], FIJAS_TEXTO.hace[animo], rng);
-  s.pobre = pickText(L.pobrecito[s.dano >= 35 ? 'alta' : 'baja'], FIJAS_TEXTO.pobre, rng);
+  s.pobre = pickText([...(L.pobrecito[s.dano >= 35 ? 'alta' : 'baja'] ?? []), ...lineasDe('pobrecito')], FIJAS_TEXTO.pobre, rng);
 }
 
 function llevarA(s: Call2, fase: Fase): void {
@@ -318,7 +319,8 @@ function oyeAlgo(s: Call2, rng: Rng): void {
   const umbrales = [28, 58, 88];
   while (s.heard < umbrales.length && s.oido >= umbrales[s.heard]) {
     const fuerte = s.heard >= 1;
-    const text = pickText(poolLlamada().oyo[fuerte ? 'fuerte' : 'suave'], FIJAS_TEXTO.oyo[fuerte ? 'fuerte' : 'suave'], rng);
+    const clave = fuerte ? 'fuerte' : 'suave';
+    const text = pickText([...(poolLlamada().oyo[clave] ?? []), ...lineasDe(`oyo-${clave}`)], FIJAS_TEXTO.oyo[clave], rng);
     s.log = [...s.log, { who: 'el', text, tono: 'oyo' }];
     s.sosp = clamp(s.sosp + (fuerte ? 18 : 9), 0, 100);
     s.dano = clamp(s.dano + (fuerte ? 12 : 6), 0, 100);
@@ -450,7 +452,8 @@ export function tick2(prev: Call2, dt: number, rng: Rng = Math.random): Call2 {
     if (nivel >= 2) {
       const L = poolLlamada();
       const lista = L.comentarios[String(nivel)];
-      const texto = pickText(lista, [FIJAS_TEXTO.comentario[nivel - 1] ?? FIJAS_TEXTO.comentario[0]], rng);
+      const banda = nivel <= 4 ? 'bajo' : nivel <= 7 ? 'medio' : 'final';
+      const texto = pickText([...(lista ?? []), ...lineasDe(`comentario-${banda}`)], [FIJAS_TEXTO.comentario[nivel - 1] ?? FIJAS_TEXTO.comentario[0]], rng);
       s.prompt = { nivel, texto };
       llevarA(s, 'comenta');
       return s;
