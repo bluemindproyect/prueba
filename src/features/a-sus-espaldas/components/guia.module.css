@@ -1,0 +1,65 @@
+/* Globos de la guía (Driver.js) con los colores del juego. */
+.pop {
+  background: #241c2f !important;
+  color: #ece6f2 !important;
+  border: 1px solid #3b3049;
+  border-radius: 16px !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55) !important;
+  max-width: min(300px, calc(100vw - 32px)) !important;
+  padding: 16px !important;
+}
+.pop :global(.driver-popover-title) {
+  font-family: var(--display), Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.4rem;
+  line-height: 1.1;
+  color: #fff;
+}
+.pop :global(.driver-popover-description) {
+  font-family: var(--prose), Georgia, serif;
+  color: #ddd3ea;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.pop :global(.driver-popover-progress-text) {
+  color: #a798b8;
+  font-family: var(--util), monospace;
+  font-size: 0.75rem;
+}
+.pop :global(.driver-popover-footer) {
+  margin-top: 14px;
+}
+.pop :global(.driver-popover-footer button) {
+  background: #f0b35a;
+  color: #17121f;
+  border: 0;
+  border-radius: 12px;
+  text-shadow: none;
+  font-family: var(--util), monospace;
+  font-size: 1rem;
+  min-height: 44px;
+  min-width: 52px;
+  padding: 8px 16px;
+}
+.pop :global(.driver-popover-footer .driver-popover-prev-btn) {
+  background: #3b3049;
+  color: #ece6f2;
+}
+.pop :global(.driver-popover-close-btn) {
+  color: #a798b8;
+  width: 40px;
+  height: 40px;
+}
+.pop :global(.driver-popover-arrow-side-left) {
+  border-left-color: #241c2f;
+}
+.pop :global(.driver-popover-arrow-side-right) {
+  border-right-color: #241c2f;
+}
+.pop :global(.driver-popover-arrow-side-top) {
+  border-top-color: #241c2f;
+}
+.pop :global(.driver-popover-arrow-side-bottom) {
+  border-bottom-color: #241c2f;
+}

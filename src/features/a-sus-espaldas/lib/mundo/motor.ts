@@ -58,6 +58,10 @@ export interface Estado {
   aviso: Aviso | null;
   ultima: string;
   log: string[];
+  /** horas del juego en que un testigo le contará a él lo que vio */
+  chismes: number[];
+  /** veces que él notó cercanía rara */
+  notas: number;
 }
 
 export function fresco(): Estado {
@@ -84,6 +88,8 @@ export function fresco(): Estado {
     aviso: null,
     ultima: 'Es una mañana tranquila. Él anda por la casa.',
     log: [],
+    chismes: [],
+    notas: 0,
   };
 }
 
@@ -564,4 +570,56 @@ export function barrasDeEtapa(e: Estado): number[] {
     const sig = ETAPA_DESDE[i + 1] ?? 100;
     return clamp(((e.quiebre - d) / (sig - d)) * 100) / 100;
   });
+}
+
+/* ---------- sensor: lo que se ve cuando haces algo cerca de otros ---------- */
+
+/** Efecto de un gesto de cercanía a la vista de alguien. `testigos`: otras personas presentes; `el`: él está aquí. */
+export function cercaniaVista(e: Estado, nivel: 1 | 2, testigos: number, el: boolean): Estado {
+  const s: Estado = { ...e, chismes: [...(e.chismes ?? [])] };
+  if (testigos > 0) s.chismes.push(s.reloj + 120 + Math.floor(Math.random() * 240));
+  if (el) {
+    s.sospecha = Math.min(100, s.sospecha + (nivel === 2 ? 14 : 7));
+    s.notas = (s.notas ?? 0) + 1;
+  }
+  return s;
+}
+
+/** Los chismes que ya maduraron: el testigo le cuenta a él. */
+export function correrChismes(e: Estado): Estado {
+  const lista = e.chismes ?? [];
+  if (!lista.some((h) => e.reloj >= h)) return e;
+  const quedan = lista.filter((h) => e.reloj < h);
+  const t = `Alguien le contó a ${e.nombre} que te vio demasiado cerca de otra persona. Él lo guarda y no dice nada.`;
+  return { ...e, chismes: quedan, sospecha: Math.min(100, e.sospecha + 10), sabe: [...e.sabe, 'Alguien le contó lo que vio'].slice(-12), ultima: t, log: log(e, t) };
+}
+
+/** Él lo nota si ya pasó varias veces. */
+export function notaDeEl(e: Estado): boolean {
+  return (e.notas ?? 0) >= 3;
+}
+
+/** Sacarla de apuros: respuesta rápida cuando él llega en mitad de un gesto. */
+export function apuro(e: Estado, id: 'disimular' | 'apartarme' | 'tema' | 'nada'): Estado {
+  let t = '';
+  const s = { ...e };
+  switch (id) {
+    case 'disimular':
+      s.sospecha = Math.max(0, s.sospecha - 4);
+      t = 'Te acomodas el pelo como si nada. Él duda un segundo y lo deja pasar.';
+      break;
+    case 'apartarme':
+      s.sospecha = Math.max(0, s.sospecha - 8);
+      t = 'Das un paso atrás justo a tiempo. Él casi no lo vio.';
+      break;
+    case 'tema':
+      s.sospecha = Math.max(0, s.sospecha - 6);
+      t = 'Cambias de tema con una sonrisa. Él te sigue la corriente.';
+      break;
+    default:
+      s.sospecha = Math.min(100, s.sospecha + 14);
+      s.quiebre = Math.min(100, s.quiebre + 2);
+      t = `${s.nombre} los vio. Se queda quieto, con la cara pálida.`;
+  }
+  return { ...s, ultima: t, log: log(s, t) };
 }

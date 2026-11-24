@@ -8,6 +8,11 @@ const GAMES = [
     text: 'Juego por turnos. Eliges dónde está él, con quién y qué haces. Hay niveles, combos y récords.',
   },
   {
+    href: '/a-sus-espaldas/paseo',
+    title: 'A Sus Espaldas · El paseo',
+    text: 'Caminas con el dedo por tu casa, su trabajo, el gym y el hotel. Él sigue su rutina; tú decides a quién invitar.',
+  },
+  {
     href: '/tres-anos',
     title: 'Tres Años',
     text: 'Historia con decisiones. Una cena de aniversario, un teléfono que vibra y lo que ella recuerda después.',

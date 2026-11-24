@@ -127,6 +127,13 @@ export async function leerTodo<T>(tabla: string, select: string, filtro: string,
   return out;
 }
 
+/** Lectura sin sesión (tablas con lectura pública). */
+export async function leerPublico<T>(tabla: string, select: string, filtro: string): Promise<T[]> {
+  const res = await fetch(`${URL_BASE}/rest/v1/${tabla}?select=${select}&${filtro}&limit=1000`, { headers: headers() });
+  if (!res.ok) throw new Error(`Lectura de ${tabla} falló (${res.status})`);
+  return (await res.json()) as T[];
+}
+
 export async function insertar<T = unknown>(
   tabla: string,
   filas: unknown,
@@ -141,4 +148,25 @@ export async function insertar<T = unknown>(
   });
   if (!res.ok) return null;
   return opts.devolver ? ((await res.json()) as T[]) : null;
+}
+
+/** Inserta o actualiza una fila (upsert) según las columnas de `conflicto`, separadas por coma. */
+export async function guardarFila(
+  tabla: string,
+  fila: unknown,
+  conflicto: string,
+  s: Sesion,
+  opts: { keepalive?: boolean } = {},
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${URL_BASE}/rest/v1/${tabla}?on_conflict=${conflicto}`, {
+      method: 'POST',
+      headers: headers(s.access, { Prefer: 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify(fila),
+      keepalive: opts.keepalive,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

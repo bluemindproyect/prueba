@@ -3,6 +3,7 @@
 Dos juegos de ficción interactiva para adultos, hechos con Next.js (App Router), React y TypeScript. Todos los personajes y las historias son inventados.
 
 - **A Sus Espaldas** (`/a-sus-espaldas`): 100 acciones en 10 niveles, combos, récords y muñequitos, con él vivo en tiempo real: pulso, ánimo, pensamientos, lo que no le cuadra y lo que hace por su cuenta.
+- **A Sus Espaldas · El paseo** (`/a-sus-espaldas/paseo`): el mismo mundo, pero caminando con el dedo por cuartos vistos de lado (ver «El paseo»).
 - **Tres Años** (`/tres-anos`): historia con decisiones y un final que depende de lo que elegiste.
 
 La partida se guarda en el navegador (`localStorage`). La base de datos de Supabase ya está lista para guardar partidas en la nube, récords, logros y estadísticas de minijuegos (ver «Base de datos»), pero el juego todavía no se conecta a ella.
@@ -100,6 +101,18 @@ Cada llamada arma un guion distinto: una apertura, dos del medio y un cierre. Si
 Lo que juegas (jugadas y llamadas) se guarda en `eventos_juego` para que luego se pueda «procesar» y crear contenido nuevo.
 
 Para que el enlace del correo funcione, en Supabase → Authentication → URL Configuration pon la URL del sitio y agrégala a las URLs de redirección permitidas.
+
+## El paseo
+
+`/a-sus-espaldas/paseo` usa la misma partida que «El mundo» (`a-sus-espaldas-mundo-v1` en el navegador y `partidas` en Supabase si entras con tu correo).
+
+- **Caminar**: tocas o mantienes el dedo y ella camina hacia allá (en computadora, flechas o A y D). En las orillas están las puertas: al cuarto de al lado o a la calle, que abre el mapa.
+- **Quién está cerca**: abajo sale su nombre; los corazones sobre su cabeza dicen qué tan fácil te diría que sí.
+- **Invitar**: si dice que sí, te sigue. En un lugar con 🔒 donde él no esté aparece «Cerrar la puerta».
+- **El momento**: abrazados, se mecen y se besan; la intensidad sube sola. Si él llega, eliges parar o seguir. Al final sale cuánto ganaste y qué le pasó a él.
+- **Guía**: la primera vez se explica cada parte en pantalla (Driver.js); el botón «?» la repite.
+
+Archivos: `components/paseo/Paseo.tsx` (pantalla principal), `Escenario.tsx` (caminar), `Cuarto.tsx` (cuartos), `Chico.tsx` (él y los demás), `Momento.tsx`; reglas en `lib/paseo/` y la guía en `components/guia.ts`.
 
 ## Agregar contenido
 
