@@ -1,42 +1,79 @@
 .wrap {
   position: relative;
   width: 100%;
+  height: 100%;
   overflow: hidden;
-  border-radius: 16px;
   background: #0d0b14;
-  border: 1px solid rgb(255 255 255 / 0.12);
+  touch-action: none;
+  user-select: none;
 }
 .canvas {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
+  display: block;
 }
 .etq {
   position: absolute;
-  top: 0.5rem;
-  left: 0.6rem;
+  top: 0.4rem;
+  left: 0.5rem;
   font-family: var(--util);
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   background: rgb(0 0 0 / 0.5);
-  padding: 0.15rem 0.45rem;
+  padding: 0.12rem 0.4rem;
   border-radius: 6px;
   color: #fff;
   pointer-events: none;
+  z-index: 3000;
 }
 .capa {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  overflow: hidden;
+}
+.sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 224px;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  will-change: transform;
+}
+.dentro {
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+.dentro svg {
+  display: block;
+}
+.chico {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 224px;
+  justify-content: flex-end;
+}
+.cuerpo {
+  margin-top: -10px;
 }
 .nombre {
   position: absolute;
   left: 0;
   top: 0;
+  z-index: 3000;
   display: grid;
-  gap: 0;
   text-align: center;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   line-height: 1.15;
   color: #fff;
   background: rgb(10 8 18 / 0.62);
@@ -49,7 +86,7 @@
   will-change: transform;
 }
 .nombre span {
-  font-size: 0.56rem;
+  font-size: 0.54rem;
   opacity: 0.8;
 }
 .nombre:disabled {
@@ -58,12 +95,13 @@
 }
 .nombreOn {
   border-color: #ffd27a;
-  background: rgb(40 28 10 / 0.8);
+  background: rgb(40 28 10 / 0.85);
 }
 .hot {
   position: absolute;
   left: 0;
   top: 0;
+  z-index: 3000;
   font-family: var(--util);
   font-size: 0.62rem;
   color: #fff;
@@ -78,5 +116,66 @@
 @keyframes pulso {
   50% {
     box-shadow: 0 0 0 6px rgb(230 100 140 / 0.25);
+  }
+}
+.joy {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.1);
+  border: 2px solid rgb(255 255 255 / 0.35);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  z-index: 4000;
+}
+.knob {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.55);
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+
+.burbuja {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3500;
+  max-width: 11rem;
+  font-family: var(--util);
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: #2b1d33;
+  background: #fff;
+  border-radius: 14px 14px 14px 3px;
+  padding: 0.4rem 0.6rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}
+.burbujaElla {
+  background: #ffe3ee;
+  border-radius: 14px 14px 3px 14px;
+}
+.corazon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3500;
+  opacity: 0;
+  pointer-events: none;
+}
+.corazon svg {
+  animation: late 0.9s ease-in-out infinite;
+}
+@keyframes late {
+  50% {
+    transform: translateY(-8px) scale(1.2);
   }
 }

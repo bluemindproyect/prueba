@@ -127,6 +127,13 @@ export async function leerTodo<T>(tabla: string, select: string, filtro: string,
   return out;
 }
 
+/** Lectura sin sesión (tablas con lectura pública). */
+export async function leerPublico<T>(tabla: string, select: string, filtro: string): Promise<T[]> {
+  const res = await fetch(`${URL_BASE}/rest/v1/${tabla}?select=${select}&${filtro}&limit=1000`, { headers: headers() });
+  if (!res.ok) throw new Error(`Lectura de ${tabla} falló (${res.status})`);
+  return (await res.json()) as T[];
+}
+
 export async function insertar<T = unknown>(
   tabla: string,
   filas: unknown,
