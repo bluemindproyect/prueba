@@ -119,6 +119,8 @@ interface Props {
   ropaN: number;
   gestoElla: Gesto;
   seguidor: { look: Look; g: Gesto; nombre: string } | null;
+  /** dónde estaba parado el que te sigue cuando aceptó: de ahí empieza a caminar */
+  seguidorDesde?: number | null;
   entrada: 'izq' | 'der' | 'centro';
   bloqueado: boolean;
   burbuja: Burbuja | null;
@@ -155,6 +157,19 @@ export function Escenario(props: Props) {
     setFrame((n) => n + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clave]);
+
+  // Cuando alguien acepta seguirte: sale de donde estaba parado, no de la puerta.
+  const sigueNombre = seguidor?.nombre ?? null;
+  useEffect(() => {
+    if (!sigueNombre) return;
+    const x0 = vivo.current.seguidorDesde;
+    if (typeof x0 === 'number') {
+      const p = pos.current;
+      p.fx = x0;
+      p.fdir = p.x >= x0 ? 1 : -1;
+      setFrame((n) => n + 1);
+    }
+  }, [sigueNombre]);
 
   useEffect(() => {
     const el = caja.current;

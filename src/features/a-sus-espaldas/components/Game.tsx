@@ -123,6 +123,9 @@ export default function Game() {
         <button type="button" className={styles.ghost} onClick={onReset}>
           {confirmReset ? 'Toca otra vez para confirmar' : 'Borrar todo y empezar de cero'}
         </button>
+        <Link href="/a-sus-espaldas/paseo" className={styles.back}>
+          El paseo: caminar con el dedo por los cuartos →
+        </Link>
         <Link href="/a-sus-espaldas/mundo" className={styles.back}>
           Entrar al mundo (tiempo real, mapa, personajes) →
         </Link>

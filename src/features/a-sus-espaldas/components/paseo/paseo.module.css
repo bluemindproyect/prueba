@@ -1,5 +1,5 @@
 .root {
-  min-height: 100dvh;
+  height: 100dvh;
   background: #0a0710;
   color: var(--text);
   display: flex;
@@ -137,6 +137,32 @@
   font-family: var(--prose);
   font-style: italic;
   font-size: 1rem;
+  white-space: nowrap;
+}
+.quien span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Lo último que pasó, en una línea corta arriba de los botones */
+.nota {
+  margin: 0 0 0.5rem;
+  font-family: var(--prose);
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  animation: notaIn 0.35s ease;
+}
+@keyframes notaIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 .acciones {
   display: grid;
@@ -468,4 +494,135 @@
   font-family: var(--prose);
   font-size: 0.95rem;
   min-height: 44px;
+}
+a.menuBtn2 {
+  display: block;
+  text-decoration: none;
+}
+.menuEl {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  font-family: var(--prose);
+  font-size: 0.92rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.menuEl p {
+  margin: 0;
+}
+.menuEl b {
+  color: var(--text);
+  font-style: italic;
+}
+.nubeEstado p {
+  margin: 0 0 0.5rem;
+}
+.nubeForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.linkBtn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--lamp);
+  font: inherit;
+  text-decoration: underline;
+}
+
+/* Hojas que suben desde abajo: el mapa y los avisos */
+.veloAbajo {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 7, 16, 0.75);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: finalIn 0.2s ease;
+}
+.hoja {
+  background: #1b1526;
+  border-radius: 18px 18px 0 0;
+  max-height: 82dvh;
+  overflow-y: auto;
+  padding: 1rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  animation: hojaIn 0.25s ease;
+}
+@keyframes hojaIn {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.hojaH {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem;
+  color: #fff;
+}
+.zona {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.zonaH {
+  font-family: var(--util);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.lugarBtn {
+  background: var(--raised);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  text-align: left;
+  font-family: var(--prose);
+  font-size: 1rem;
+}
+.lugarBtn:active { transform: scale(0.98); }
+.lugarBtn:disabled { opacity: 1; border-color: var(--lamp); }
+.lugarGente {
+  font-family: var(--util);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.lugarEl {
+  color: var(--screen);
+}
+.cerrarHoja {
+  margin-top: 1rem;
+  width: 100%;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-height: 48px;
+  font-family: var(--prose);
+  font-size: 1rem;
+}
+.avisoTexto {
+  font-family: var(--prose);
+  font-size: 1.1rem;
+  line-height: 1.4;
+  color: var(--text);
+  margin: 0.4rem 0 1rem;
+}
+.avisoOpciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
