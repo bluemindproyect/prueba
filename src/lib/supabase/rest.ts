@@ -142,3 +142,24 @@ export async function insertar<T = unknown>(
   if (!res.ok) return null;
   return opts.devolver ? ((await res.json()) as T[]) : null;
 }
+
+/** Inserta o actualiza una fila (upsert) según las columnas de `conflicto`, separadas por coma. */
+export async function guardarFila(
+  tabla: string,
+  fila: unknown,
+  conflicto: string,
+  s: Sesion,
+  opts: { keepalive?: boolean } = {},
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${URL_BASE}/rest/v1/${tabla}?on_conflict=${conflicto}`, {
+      method: 'POST',
+      headers: headers(s.access, { Prefer: 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify(fila),
+      keepalive: opts.keepalive,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

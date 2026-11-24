@@ -184,7 +184,7 @@ function Brazo({ s, a1, a2 }: { s: 1 | -1; a1: number; a2: number }) {
   );
 }
 
-function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
+export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
   const pelo = mojada ? '#1b1220' : PELO;
   const cabeza = `rotate(${pose.cab} 120 136) translate(120 136) scale(1 0.84) translate(-120 -136)`;
   const sep = (pose.sep ?? 0) * 0.5;
