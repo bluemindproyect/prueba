@@ -17,7 +17,7 @@ export interface PasoGuia {
   el?: string;
   titulo: string;
   texto: string;
-  lado?: 'top' | 'bottom' | 'left' | 'right' | 'over';
+  lado?: 'top' | 'bottom' | 'left' | 'right';
 }
 
 function leer(): Record<string, boolean> {
