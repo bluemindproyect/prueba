@@ -231,7 +231,10 @@ export default function Paseo() {
     ancho,
     aquiEl,
   );
-  const gestoEl = useMemo(() => gestoDeEl(et, e.sospecha), [et, Math.floor(e.reloj / 20), Math.round(e.sospecha / 12)]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Su cara cambia cada 20 minutos del juego. El azar sale del reloj para que el servidor y el
+  // teléfono dibujen la misma cara al abrir la página.
+  const tramo20 = Math.floor(e.reloj / 20) + e.dia * 72;
+  const gestoEl = useMemo(() => gestoDeEl(et, e.sospecha, () => ((tramo20 * 9301 + 49297) % 233280) / 233280), [et, tramo20, Math.round(e.sospecha / 12)]); // eslint-disable-line react-hooks/exhaustive-deps
   const piensa = fmt(T.piensa[et][Math.floor(e.reloj / 45) % T.piensa[et].length], e);
   const puedeCerrarAhora = puedeCerrar(e);
   const personaCerca = cerca && cerca !== 'el' ? (aqui.find(({ p }) => p.id === cerca) ?? null) : null;
