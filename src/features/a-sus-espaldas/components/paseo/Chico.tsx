@@ -5,6 +5,10 @@ import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
 /**
  * Él y los demás en dibujo plano, de cuerpo completo. Mismo sistema de medidas que `Chica`:
  * centro en x = 120 y pies en y ≈ 437. La cara es `Rostro`, con los mismos gestos de siempre.
+ *
+ * Con `desnudo` se le quita la camisa (el torso y los brazos pasan a piel) y se le dibujan
+ * pectorales y pezones. Con `pene` se le añade el miembro: `ereccion` (0 a 1) lo levanta y
+ * `corrida` (0 a 1) le pone el chorro en la punta.
  */
 
 export interface PoseChico {
@@ -61,9 +65,60 @@ function Pierna({ lado, giro, pantalon }: { lado: 1 | -1; giro: number; pantalon
 const CARA = 90;
 const K = CARA / 104;
 
-export function CuerpoChico({ look, g, pose = CHICO_PARADO }: { look: Look; g: Gesto; pose?: PoseChico }) {
+/**
+ * El miembro. Se dibuja horizontal y se gira en la base: `ereccion` 0 lo deja caer y 1 lo
+ * levanta. Lleva sombra en el bajo vientre, surco del glande y raja en la punta.
+ */
+function Miembro({ piel, ereccion, corrida }: { piel: string; ereccion: number; corrida: number }) {
+  const e = Math.max(0, Math.min(1, ereccion));
+  const c = Math.max(0, Math.min(1, corrida));
+  const ang = 10 - 26 * e;
+  return (
+    <g transform={`rotate(${f(ang)} 121 291)`}>
+      <ellipse cx="121" cy="291" rx="6.5" ry="8.5" fill="#000" fillOpacity="0.13" />
+      <path
+        d="M122 286 C130 284 138 283 144 282 C148 281.4 151 283 151 286 C151 289 148 290.6 144 290 C138 289 130 290 122 292 Z"
+        fill={piel}
+        stroke={TINTA}
+        strokeOpacity="0.3"
+        strokeWidth="0.9"
+      />
+      <path d="M143 281.6 Q141.4 286 143 290.4" fill="none" stroke={TINTA} strokeOpacity="0.22" strokeWidth="0.9" strokeLinecap="round" />
+      <path d="M124 291 C132 290 140 289.6 145 289.2" fill="none" stroke="#000" strokeOpacity="0.16" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M126 285.4 C133 284 139 283.4 144 282.8" fill="none" stroke="#fff" strokeOpacity="0.3" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M150.6 284.4 L150.6 287.6" stroke="#b5715f" strokeOpacity="0.8" strokeWidth="1.1" strokeLinecap="round" />
+      {c > 0 && (
+        <g>
+          <ellipse cx="157" cy="285" rx={2.4 + c * 6} ry={2 + c * 3.4} fill="#fff" opacity={0.55 + c * 0.4} />
+          <ellipse cx="166" cy="289" rx={1.6 + c * 4} ry={1.4 + c * 2.4} fill="#fff" opacity={0.4 + c * 0.4} />
+          <ellipse cx="174" cy="283" rx={1.1 + c * 2.6} ry={1.1 + c * 1.8} fill="#fff" opacity={c * 0.75} />
+        </g>
+      )}
+    </g>
+  );
+}
+
+export function CuerpoChico({
+  look,
+  g,
+  pose = CHICO_PARADO,
+  desnudo = false,
+  pene = false,
+  ereccion = 1,
+  corrida = 0,
+}: {
+  look: Look;
+  g: Gesto;
+  pose?: PoseChico;
+  desnudo?: boolean;
+  pene?: boolean;
+  ereccion?: number;
+  corrida?: number;
+}) {
   const paso = pose.paso ?? 0;
   const piel = look.piel;
+  // Sin camisa, la manga del brazo y el torso son piel.
+  const ropa = desnudo ? piel : look.ropa;
   return (
     <g strokeLinejoin="round" transform={`rotate(${pose.inc ?? 0} 120 300)`}>
       <Pierna lado={-1} giro={paso * 16} pantalon={look.pantalon} />
@@ -71,19 +126,27 @@ export function CuerpoChico({ look, g, pose = CHICO_PARADO }: { look: Look; g: G
       {/* torso */}
       <path
         d="M88 156 Q120 144 152 156 L158 178 Q153 238 147 292 L93 292 Q87 238 82 178 Z"
-        fill={look.ropa}
+        fill={ropa}
         stroke={TINTA}
         strokeOpacity="0.32"
         strokeWidth="1.2"
       />
       <path d="M147 160 Q153 230 147 292 L139 292 Q144 230 140 158 Z" fill="#000" fillOpacity="0.12" />
       <path d="M93 284 L147 284" stroke="#000" strokeOpacity="0.25" strokeWidth="6" />
+      {desnudo && (
+        <g>
+          <path d="M100 176 Q110 184 120 178 M140 176 Q130 184 120 178" fill="none" stroke="#000" strokeOpacity="0.12" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="105" cy="186" r="2.4" fill="#8f5a44" fillOpacity="0.55" />
+          <circle cx="135" cy="186" r="2.4" fill="#8f5a44" fillOpacity="0.55" />
+        </g>
+      )}
+      {pene && <Miembro piel={piel} ereccion={ereccion} corrida={corrida} />}
       {/* cuello */}
       <path d="M109 122 L109 152 Q120 162 131 152 L131 122 Z" fill={piel} />
       <path d="M109 126 Q120 142 131 126 L131 122 L109 122 Z" fill="#000" fillOpacity="0.12" />
       <path d="M103 152 L120 167 L137 152" fill="none" stroke="#fff" strokeOpacity="0.3" strokeWidth="3" strokeLinecap="round" />
-      <Brazo s={-1} a1={pose.izq[0]} a2={pose.izq[1]} manga={look.ropa} piel={piel} />
-      <Brazo s={1} a1={pose.der[0]} a2={pose.der[1]} manga={look.ropa} piel={piel} />
+      <Brazo s={-1} a1={pose.izq[0]} a2={pose.izq[1]} manga={ropa} piel={piel} />
+      <Brazo s={1} a1={pose.der[0]} a2={pose.der[1]} manga={ropa} piel={piel} />
       {/* cabeza */}
       <g transform={`rotate(${pose.cab ?? 0} 120 140)`}>
         <g transform={`translate(${f(120 - 52 * K)} ${f(94 - 58 * K)})`}>
