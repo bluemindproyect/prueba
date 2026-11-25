@@ -145,6 +145,8 @@ export interface CallResult {
   colgo?: 'ella' | 'el';
   /** cuánto sospecha él al final (0 a 100) */
   sosp?: number;
+  /** lo tuviste en altavoz: lo oyó todo el rato */
+  altavoz?: boolean;
 }
 
 export type Rng = () => number;
