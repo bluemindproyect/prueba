@@ -413,7 +413,11 @@
   font-size: 1.05rem;
   animation: textoIn 0.3s ease;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: min(26rem, 84%);
+  line-height: 1.35;
+  font-size: 0.98rem;
+}
 }
 .textoAlerta {
   background: rgba(238, 125, 134, 0.85);
