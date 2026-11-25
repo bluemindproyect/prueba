@@ -225,6 +225,14 @@ export default function Paseo() {
     else void document.documentElement.requestFullscreen?.().catch(() => undefined);
   };
 
+  // La nota de abajo se muestra unos segundos y luego se va sola, para no tapar nada.
+  const [notaViva, setNotaViva] = useState(true);
+  useEffect(() => {
+    setNotaViva(true);
+    const id = window.setTimeout(() => setNotaViva(false), 6000);
+    return () => window.clearTimeout(id);
+  }, [e.ultima]);
+
   // Los globos se van solos.
   useEffect(() => {
     if (!burbuja) return;
@@ -618,17 +626,22 @@ export default function Paseo() {
         onPuerta={alPuerta}
       />
 
-      <div className={styles.info}>
-        <p key={e.ultima} className={styles.nota}>
-          {e.ultima}
-        </p>
-        <div className={styles.quien} data-tour="quien">
-          {quien}
-          <button type="button" className={styles.ayuda} onClick={verGuia} aria-label="Cómo se juega">
-            ?
-          </button>
+      {/* Mientras alguien habla, este texto se esconde: el globo es lo que importa. */}
+      {!burbuja && (
+        <div className={styles.info}>
+          {notaViva && (
+            <p key={e.ultima} className={styles.nota}>
+              {e.ultima}
+            </p>
+          )}
+          <div className={styles.quien} data-tour="quien">
+            {quien}
+            <button type="button" className={styles.ayuda} onClick={verGuia} aria-label="Cómo se juega">
+              ?
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {enDock.length > 0 && (
         <div className={styles.dock} data-tour="acciones">

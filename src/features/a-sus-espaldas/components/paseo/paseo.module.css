@@ -292,7 +292,7 @@
   z-index: 50;
   display: grid;
   /* Vertical: la escena arriba y el teléfono abajo. Nada se encima. */
-  grid-template-rows: minmax(0, 42fr) minmax(0, 58fr);
+  grid-template-rows: minmax(0, 34fr) minmax(0, 66fr);
 }
 .momentoEscena {
   position: relative;
