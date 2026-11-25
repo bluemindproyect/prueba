@@ -7,8 +7,8 @@ import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
  * centro en x = 120 y pies en y ≈ 437. La cara es `Rostro`, con los mismos gestos de siempre.
  *
  * Con `desnudo` se le quita la camisa (el torso y los brazos pasan a piel) y se le dibujan
- * pectorales y pezones. Con `pene` se le añade el miembro: `ereccion` (0 a 1) lo levanta y
- * `corrida` (0 a 1) le pone el chorro en la punta.
+ * pectorales y pezones. `Pene` se exporta suelto para poder dibujarlo en una capa por encima de
+ * las dos figuras: si va dentro del cuerpo, ella lo tapa con la cabeza cuando se lo está mamando.
  */
 
 export interface PoseChico {
@@ -66,15 +66,29 @@ const CARA = 90;
 const K = CARA / 104;
 
 /**
- * El miembro. Se dibuja horizontal y se gira en la base: `ereccion` 0 lo deja caer y 1 lo
- * levanta. Lleva sombra en el bajo vientre, surco del glande y raja en la punta.
+ * El miembro, suelto. Se dibuja horizontal y se gira en la base: `ereccion` 0 lo deja caer y 1
+ * lo levanta. `largo` (0.35 a 1) lo acorta, escalando desde la base, para cuando está metido en
+ * la boca. Lleva sombra en el bajo vientre, surco del glande y raja en la punta.
  */
-function Miembro({ piel, ereccion, corrida }: { piel: string; ereccion: number; corrida: number }) {
+export function Pene({
+  piel,
+  ereccion = 1,
+  corrida = 0,
+  largo = 1,
+}: {
+  piel: string;
+  ereccion?: number;
+  corrida?: number;
+  largo?: number;
+}) {
   const e = Math.max(0, Math.min(1, ereccion));
   const c = Math.max(0, Math.min(1, corrida));
+  const l = Math.max(0.35, Math.min(1, largo));
   const ang = 10 - 26 * e;
+  // La punta se acerca a la base al acortarse, y los chorros la acompañan.
+  const p = (d: number): number => 121 + (30 + d) * l;
   return (
-    <g transform={`rotate(${f(ang)} 121 291)`}>
+    <g transform={`rotate(${f(ang)} 121 291) translate(121 0) scale(${f(l)} 1) translate(-121 0)`}>
       <ellipse cx="121" cy="291" rx="6.5" ry="8.5" fill="#000" fillOpacity="0.13" />
       <path
         d="M122 286 C130 284 138 283 144 282 C148 281.4 151 283 151 286 C151 289 148 290.6 144 290 C138 289 130 290 122 292 Z"
@@ -89,9 +103,9 @@ function Miembro({ piel, ereccion, corrida }: { piel: string; ereccion: number; 
       <path d="M150.6 284.4 L150.6 287.6" stroke="#b5715f" strokeOpacity="0.8" strokeWidth="1.1" strokeLinecap="round" />
       {c > 0 && (
         <g>
-          <ellipse cx="157" cy="285" rx={2.4 + c * 6} ry={2 + c * 3.4} fill="#fff" opacity={0.55 + c * 0.4} />
-          <ellipse cx="166" cy="289" rx={1.6 + c * 4} ry={1.4 + c * 2.4} fill="#fff" opacity={0.4 + c * 0.4} />
-          <ellipse cx="174" cy="283" rx={1.1 + c * 2.6} ry={1.1 + c * 1.8} fill="#fff" opacity={c * 0.75} />
+          <ellipse cx={f(p(6))} cy="285" rx={2.4 + c * 6} ry={2 + c * 3.4} fill="#fff" opacity={0.55 + c * 0.4} />
+          <ellipse cx={f(p(15))} cy="289" rx={1.6 + c * 4} ry={1.4 + c * 2.4} fill="#fff" opacity={0.4 + c * 0.4} />
+          <ellipse cx={f(p(23))} cy="283" rx={1.1 + c * 2.6} ry={1.1 + c * 1.8} fill="#fff" opacity={c * 0.75} />
         </g>
       )}
     </g>
@@ -140,7 +154,7 @@ export function CuerpoChico({
           <circle cx="135" cy="186" r="2.4" fill="#8f5a44" fillOpacity="0.55" />
         </g>
       )}
-      {pene && <Miembro piel={piel} ereccion={ereccion} corrida={corrida} />}
+      {pene && <Pene piel={piel} ereccion={ereccion} corrida={corrida} />}
       {/* cuello */}
       <path d="M109 122 L109 152 Q120 162 131 152 L131 122 Z" fill={piel} />
       <path d="M109 126 Q120 142 131 126 L131 122 L109 122 Z" fill="#000" fillOpacity="0.12" />
