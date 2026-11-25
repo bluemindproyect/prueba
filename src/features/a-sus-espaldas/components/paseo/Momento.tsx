@@ -499,9 +499,18 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 />
               </g>
             </g>
-            <g transform={poner(ellaX, 1, SE, mamando ? Y_RODILLAS * SE : 0)}>
-              <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} mojada={t >= 78} />
-            </g>
+            <g transform={poner(ellaX, 1, SE)}>
+  <Cuerpo
+    g={g(caraElla)}
+    ropa={despues ? ROPA_DESNUDA : ROPA_BIKINI}
+    pose={despues ? POSE_CAMINANDO : poseElla}
+    despeinada={despues}
+    caminando={despues}
+    pecho={despues ? 1.35 : 1}
+    hinchada={despues}
+    mojada={despues}
+  />
+</g>
           </g>
         </g>
         {/* el calor en la piel */}
