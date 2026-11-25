@@ -6,7 +6,7 @@ import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
  */
 
 export interface Ropa {
-  tipo?: 'vestido' | 'short' | 'bikini';
+  tipo?: 'vestido' | 'short' | 'bikini' | 'desnuda';
   short?: string;
   vestido: string;
   sombra: string;
@@ -71,6 +71,9 @@ const PELO = '#2b1d22';
 const PELO_LUZ = '#4a3a58';
 const TINTA = '#4a3038';
 const BOCA = '#b8605a';
+
+/** Desnuda: sin ropa, con pecho y pubis dibujados. */
+export const ROPA_DESNUDA: Ropa = { tipo: 'desnuda', vestido: PIEL, sombra: PIEL_SOMBRA, short: PIEL, zapatos: '#f4efe6' };
 
 const f = (n: number): string => n.toFixed(1);
 
@@ -192,6 +195,9 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
   const b = pose.baja ?? 0;
   const sudor = g.extras.includes('sudor');
   const bikini = ropa.tipo === 'bikini';
+  const desnuda = ropa.tipo === 'desnuda';
+  /** Bikini con el color del top igual a la piel: queda el pecho al aire y la braga puesta. */
+  const sinSujetador = bikini && ropa.vestido === PIEL;
   const muslo = (lado: 1 | -1): string => {
     const x0 = 120 + lado * 8;
     const yy = (bikini ? 284 : 296) + b;
@@ -204,7 +210,7 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
     return `M${120 + lado * 12} 268 L${x.toFixed(1)} ${(y - b).toFixed(1)}`;
   };
   const corto = ropa.tipo === 'short' || bikini;
-  const y0 = bikini ? 284 : corto ? 296 : 340;
+  const y0 = desnuda ? 288 : bikini ? 284 : corto ? 296 : 340;
   return (
     <g strokeLinejoin="round" transform={`rotate(${pose.inc} 120 300)`}>
       {/* piernas delgadas */}
@@ -231,12 +237,33 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
         <path d="M112 214 Q120 222 128 214 Q120 232 112 214 Z" fillOpacity="0.22" />
         <path d="M116 152 Q120 170 124 152 Z" fillOpacity="0.35" />
       </g>
-      {bikini ? (
+      {desnuda ? (
+        <g stroke={TINTA} strokeOpacity="0.18" strokeWidth="0.7">
+          {/* pecho desnudo */}
+          <path d="M100 177 Q110 175 119 183 Q119 197 112 203 Q103 205 98 195 Q95 185 100 177 Z" fill={PIEL} />
+          <path d="M140 177 Q130 175 121 183 Q121 197 128 203 Q137 205 142 195 Q145 185 140 177 Z" fill={PIEL} />
+          <circle cx="107" cy="190" r="4.6" fill={PIEL_SOMBRA} fillOpacity="0.55" stroke="none" />
+          <circle cx="133" cy="190" r="4.6" fill={PIEL_SOMBRA} fillOpacity="0.55" stroke="none" />
+          <circle cx="107" cy="190" r="1.7" fill="#b5715f" stroke="none" />
+          <circle cx="133" cy="190" r="1.7" fill="#b5715f" stroke="none" />
+          {/* pubis */}
+          <path d="M113 268 Q120 273 127 268 Q126 281 120 288 Q114 281 113 268 Z" fill={PIEL_SOMBRA} fillOpacity="0.5" stroke="none" />
+          <path d="M120 277 L120 289" stroke={PIEL_SOMBRA} strokeWidth="1.4" strokeLinecap="round" fill="none" />
+        </g>
+      ) : bikini ? (
         <g stroke={TINTA} strokeOpacity="0.3" strokeWidth="0.8">
           <circle cx="120" cy="238" r="1.2" fill={PIEL_SOMBRA} stroke="none" />
           <path d="M111 152 L106 184 M129 152 L134 184" fill="none" stroke={ropa.vestido} strokeWidth="1.8" strokeLinecap="round" strokeOpacity="1" />
           <path d="M100 177 Q110 175 119 183 Q119 197 112 203 Q103 205 98 195 Q95 185 100 177 Z" fill={ropa.vestido} />
           <path d="M140 177 Q130 175 121 183 Q121 197 128 203 Q137 205 142 195 Q145 185 140 177 Z" fill={ropa.vestido} />
+          {sinSujetador && (
+            <g stroke="none">
+              <circle cx="107" cy="190" r="4.4" fill={PIEL_SOMBRA} fillOpacity="0.5" />
+              <circle cx="133" cy="190" r="4.4" fill={PIEL_SOMBRA} fillOpacity="0.5" />
+              <circle cx="107" cy="190" r="1.6" fill="#b5715f" />
+              <circle cx="133" cy="190" r="1.6" fill="#b5715f" />
+            </g>
+          )}
           <path d="M100 204 Q108 209 118 203 Q108 213 100 204 Z M140 204 Q132 209 122 203 Q132 213 140 204 Z" fill={PIEL_SOMBRA} fillOpacity="0.45" stroke="none" />
           <ellipse cx="106" cy="183" rx="3.4" ry="1.7" fill="#fff" fillOpacity="0.4" stroke="none" transform="rotate(-25 106 183)" />
           <ellipse cx="134" cy="183" rx="3.4" ry="1.7" fill="#fff" fillOpacity="0.4" stroke="none" transform="rotate(25 134 183)" />
