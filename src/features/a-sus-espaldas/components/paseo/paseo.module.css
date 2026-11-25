@@ -839,3 +839,23 @@ a.menuBtn2 {
   0% { opacity: 0; transform: scale(0.2); }
   100% { opacity: 0.9; transform: scale(1); }
 }
+.momento {
+  grid-template-rows: minmax(0, 46fr) minmax(0, 54fr);
+}
+@media (orientation: landscape) and (min-width: 560px) {
+  .momento {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  }
+}
+.momentoTelefono {
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #0a0710;
+}
+.telefonoEscala {
+  height: 116%;
+  transform: scale(0.86);
+  transform-origin: top center;
+}
