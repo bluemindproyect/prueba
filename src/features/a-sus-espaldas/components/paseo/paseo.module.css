@@ -410,13 +410,12 @@
   font-family: var(--prose);
   font-style: italic;
   color: var(--text);
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   animation: textoIn 0.3s ease;
   text-align: center;
   white-space: normal;
   max-width: min(26rem, 84%);
   line-height: 1.35;
-  font-size: 0.98rem;
 }
 .textoAlerta {
   background: rgba(238, 125, 134, 0.85);
@@ -759,4 +758,98 @@ a.menuBtn2 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+.altavoz {
+  position: absolute;
+  z-index: 3;
+  top: calc(env(safe-area-inset-top, 0px) + 2.5rem);
+  left: 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.4rem 0.7rem;
+  background: rgba(224, 69, 123, 0.85);
+  color: #fff;
+  font-family: var(--util);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+.frente { bottom: 1.15rem; }
+.gesto {
+  border: 0;
+  border-radius: 14px;
+  padding: 0.45rem;
+  font-family: var(--prose);
+  font-size: 0.9rem;
+  font-style: italic;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  min-height: 58px;
+  background: linear-gradient(#a86fd0, #5e3a86);
+}
+.gesto:disabled { opacity: 0.4; }
+.gesto span { font-size: 1.3rem; }
+.gesto small { font-family: var(--util); font-style: normal; font-size: 0.62rem; opacity: 0.85; }
+.aguante {
+  position: absolute;
+  z-index: 3;
+  left: 0.75rem;
+  right: 4rem;
+  bottom: 0.55rem;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.aguante i {
+  display: block;
+  height: 100%;
+  background: #f0b24a;
+  transition: width 0.1s linear;
+}
+.corrida { animation: corrida 0.6s ease-out both; }
+@keyframes corrida {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 1; }
+}
+.veloz {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: veloz 0.5s linear infinite;
+}
+@keyframes veloz {
+  0% { opacity: 0; transform: translateX(10px); }
+  40% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateX(-18px); }
+}
+.sudor {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sudor 2.6s ease-in infinite;
+}
+@keyframes sudor {
+  0% { opacity: 0; transform: translateY(-3px); }
+  20% { opacity: 0.85; }
+  100% { opacity: 0; transform: translateY(16px); }
+}
+.espasmo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: espasmo 0.18s linear infinite;
+}
+@keyframes espasmo {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(0.8px, -0.6px); }
+}
+.mancha {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mancha 3s ease-out both;
+}
+@keyframes mancha {
+  0% { opacity: 0; transform: scale(0.2); }
+  100% { opacity: 0.9; transform: scale(1); }
 }
