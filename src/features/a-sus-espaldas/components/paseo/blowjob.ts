@@ -6,15 +6,14 @@ import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
 
 /**
  * La mamada: ella agachada a la altura de su cadera y él de pie con las manos en su cabeza.
- * Todo en segundos. Igual que en `abrazo`, el brazo «der» de cada figura es el que mira al otro,
- * porque el escenario voltea el dibujo.
+ * Igual que en `abrazo`, el brazo «der» de cada figura es el que mira al otro.
  *
  * Ella no está de pie: va bajada. El escenario tiene que colocarla con `Y_RODILLAS` de más en el
- * eje Y y voltearla hacia él. Los `baja` de las posturas son la flexión de las piernas encima de
- * esa bajada.
+ * eje Y. Los `baja` de las posturas son la flexión de las piernas encima de esa bajada.
  *
- * Orden de fases: bajar, abrir la boca, mamar con el vaivén del ritmo, hundirse, salir a
- * respirar y, si toca, tragar.
+ * Todo se mueve con `succion` (0 a 1), que es el botón de `Mamada`: apretado baja y mama, suelto
+ * la saca. La profundidad la pone la bolita de opciones y no cambia el vaivén, solo hasta dónde
+ * llega el fondo.
  */
 
 /** Qué tan hondo llega. */
@@ -52,8 +51,8 @@ const PARADA = POSES[0];
 /* ---------- ella ---------- */
 
 export const ELLA_BAJA: Pose = { ...PARADA, id: 'bajaMamada', nombre: 'Se agacha', di: 20, fi: -70, dd: 20, fd: -70, inc: 14, cab: 16, sep: 14, rod: 26, baja: 62, cara: 'labio' };
-export const ELLA_AGACHA: Pose = { ...PARADA, id: 'agachada', nombre: 'Manos en sus muslos', di: 26, fi: -84, dd: 26, fd: -84, inc: 18, cab: 20, sep: 12, rod: 28, baja: 74, cara: 'labio' };
-export const ELLA_MAMA: Pose = { ...PARADA, id: 'mamando', nombre: 'Mamando', di: 30, fi: -96, dd: 30, fd: -96, inc: 20, cab: 22, sep: 10, rod: 30, baja: 80, cara: 'ojoscerrados' };
+export const ELLA_AGACHA: Pose = { ...PARADA, id: 'agachada', nombre: 'Manos en sus muslos', di: 26, fi: -84, dd: 26, fd: -84, inc: 18, cab: 20, sep: 12, rod: 28, baja: 74, cara: 'gemido' };
+export const ELLA_MAMA: Pose = { ...PARADA, id: 'mamando', nombre: 'Mamando', di: 30, fi: -96, dd: 30, fd: -96, inc: 20, cab: 22, sep: 10, rod: 30, baja: 80, cara: 'gemido' };
 export const ELLA_HONDO: Pose = { ...PARADA, id: 'hondo', nombre: 'Hasta el fondo', di: 32, fi: -104, dd: 32, fd: -104, inc: 24, cab: 26, sep: 9, rod: 32, baja: 86, cara: 'aguanta' };
 export const ELLA_SALE: Pose = { ...PARADA, id: 'sale', nombre: 'Sale a respirar', di: 24, fi: -78, dd: 24, fd: -78, inc: 10, cab: -5, sep: 13, rod: 24, baja: 70, cara: 'jadeo' };
 export const ELLA_TRAGA: Pose = { ...PARADA, id: 'traga', nombre: 'Traga', di: 22, fi: -72, dd: 22, fd: -72, inc: 12, cab: -11, sep: 12, rod: 22, baja: 68, cara: 'alivio' };
@@ -84,14 +83,14 @@ export function anticipo(t: number): number {
 const RITMO: Record<'lento' | 'firme' | 'rapido', number> = { lento: 1.6, firme: 1.1, rapido: 0.72 };
 
 /**
- * El vaivén de la cabeza: 0 cuando está arriba y 1 cuando está abajo. Cambia de velocidad con el
- * ritmo y se le suma un armónico para que no sea un péndulo perfecto.
+ * Cuánto está metida, de 0 a 1, según tu succión y el tiempo. Con el botón suelto da 0 y la saca
+ * del todo; apretado se queda entre 0.55 y 1, bombeando con el ritmo.
  */
-export function vaiven(t: number, ritmo: 'lento' | 'firme' | 'rapido' = 'firme'): number {
+export function vaiven(succion: number, t: number, ritmo: 'lento' | 'firme' | 'rapido' = 'firme'): number {
+  const s = C(succion, 0, 1);
   const p = RITMO[ritmo];
-  const a = 0.5 + 0.5 * Math.sin((t / p) * Math.PI * 2 - Math.PI / 2);
-  const b = 0.12 * Math.sin((t / p) * Math.PI * 4);
-  return C(a + b, 0, 1);
+  const bob = 0.5 + 0.5 * Math.sin((t / p) * Math.PI * 2 - Math.PI / 2);
+  return C(s * (0.55 + 0.45 * bob), 0, 1);
 }
 
 /** Envolvente de fondo: nunca es un 0 plano, siempre queda algo metido. */
@@ -105,10 +104,16 @@ export function profundidadDe(excitacion: number): Profundidad {
   return e >= 78 ? 'garganta' : e >= 45 ? 'honda' : 'suave';
 }
 
-/** El gesto que le toca a ella en cada profundidad. */
-export const CARA_DE: Record<Profundidad, string> = { suave: 'labio', honda: 'ojoscerrados', garganta: 'aguanta' };
+/** El gesto de fondo de cada profundidad: boca abierta, más apretada cuanto más hondo. */
+export const CARA_DE: Record<Profundidad, string> = { suave: 'gemido', honda: 'jadeo', garganta: 'aguanta' };
 
-/** Las poses de fondo según la profundidad, ya mezcladas con el vaivén. */
+/** La cara según el momento: si está casi fuera, respira; si está dentro, la de la profundidad. */
+export function caraDe(p: Profundidad, v: number): string {
+  if (v < 0.15) return 'jadeo';
+  return CARA_DE[p];
+}
+
+/** Las poses según la profundidad y cuánto está metida. */
 export function posesDe(profundidad: Profundidad, v: number): { ella: Pose; el: PoseChico } {
   const k = profundidad === 'garganta' ? 0.35 + v * 0.65 : profundidad === 'honda' ? v * 0.6 : v * 0.35;
   return {
