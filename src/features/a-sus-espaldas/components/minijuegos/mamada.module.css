@@ -1,0 +1,45 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.75rem;
+  background: #0a0710;
+  font-family: var(--util);
+  color: var(--text);
+}
+.kick { margin: 0; font-size: 0.78rem; color: var(--muted); text-align: center; }
+.barra {
+  position: relative;
+  flex: 1;
+  width: 2.2rem;
+  min-height: 5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.barra i { position: absolute; left: 0; right: 0; bottom: 0; transition: height 0.1s linear; }
+.barra b { position: absolute; left: 0; right: 0; height: 2px; background: #fff; opacity: 0.8; }
+.barra em { position: absolute; left: 0; right: 0; height: 1px; background: #e0457b; opacity: 0.9; }
+.chorros { margin: 0; font-size: 0.72rem; color: var(--rose); }
+.boton {
+  width: 100%;
+  min-height: 62px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(#3a6b86, #86c8ea);
+  color: #fff;
+  font-family: var(--prose);
+  font-size: 1.05rem;
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  touch-action: none;
+}
+.boton small { font-family: var(--util); font-style: normal; font-size: 0.62rem; opacity: 0.85; }
+.botonOn { transform: scale(0.97); background: linear-gradient(#86c8ea, #cfeaf7); color: #10202a; }
+.botonCorrida { background: linear-gradient(#8f2a52, #e0457b); }
+.zoom { margin: 0; font-size: 0.6rem; color: var(--muted); height: 0.8rem; }
