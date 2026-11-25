@@ -33,8 +33,8 @@ import styles from './paseo.module.css';
 /**
  * El momento a solas: se desnudan poco a poco y la escena se calienta con el termómetro (la
  * cámara se cierra, sudan, se les enciende la piel, a él se le levanta). Pasado el punto medio
- * se ponen de perrito y se mueven, y a ella le chorrea. Si él llega, eliges parar o seguir; si
- * sigues, se queda en la puerta y puedes humillarlo. Puedes ponerlo en altavoz.
+ * se ponen de perrito, se mueven, a ella le chorrea y se burla de él por teléfono. Si él llega,
+ * eliges parar o seguir; si sigues, se queda en la puerta y puedes humillarlo. Altavoz opcional.
  */
 
 type Fase = 'sube' | 'mamada' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin';
@@ -66,6 +66,27 @@ const FUERTES: readonly Pose[] = [
 
 // Se desnudan con la excitación: primero el top, después todo.
 const ROPA_TOP_FUERA: Ropa = { ...ROPA_BIKINI, vestido: PIEL, sombra: PIEL_SOMBRA };
+
+/** Lo que ella le suelta a él mientras la están cogiendo. */
+const BURLA: readonly string[] = [
+  '«Diooos, si supiera.»',
+  '«Nmms, qué rico.»',
+  '«Él ahí esperándome y yo aquí cogiendo con otro.»',
+  '«Nmms, qué rico… y él bien tranquilo.»',
+  '«Si supiera dónde traigo las piernas ahorita.»',
+  '«Dios, qué rico. Y él esperando.»',
+  '«Nmms. Neta, nmms.»',
+  '«Él en su casa y yo aquí, bien cogida.»',
+  '«Si me oyera, güey.»',
+  '«Ay, Dios. Qué rico. Qué rico.»',
+  '«Nmms, se me va a salir la voz.»',
+  '«Dios, si supiera lo que estoy haciendo.»',
+  '«Él mandándome corazones y yo aquí.»',
+  '«Qué rico, nmms. Y él sin saber nada.»',
+];
+
+const BURLA_PROB = 0.45;
+const burlaDe = (): string => BURLA[Math.floor(Math.random() * BURLA.length)];
 
 const ROSTROS_VISTO: readonly (readonly string[])[] = [
   ['confundido', 'vidrioso', 'lloriqueo', 'llanto'],
@@ -266,7 +287,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             : t < 45
               ? 'deseoella'
               : perrito
-                ? 'ojoscerrados'
+                ? Math.floor(desde / 5) % 3 === 0
+                  ? 'burla'
+                  : 'ojoscerrados'
                 : 'ojoscerrados';
   const caraOtro =
     mamando
@@ -279,9 +302,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
           ? 'nervioso'
           : t < 45
             ? 'embobado'
-            : perrito
-              ? 'rendido'
-              : 'rendido';
+            : 'rendido';
   const poseMamada = posesMamada(profMamada, mama?.fase === 'corrida' ? 1 : vMamada);
   const poseElla = separados
     ? COMO_SI_NADA
@@ -351,10 +372,11 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
       setLinea(climaxDe());
       return;
     }
-    setLinea((l) => lineaDe(tramo, ritmo, Math.random, l, escena));
-    const id = window.setInterval(() => setLinea((l) => lineaDe(tramo, ritmo, Math.random, l, escena)), 5200);
+    const elige = (evitar: string) => (perrito && Math.random() < BURLA_PROB ? burlaDe() : lineaDe(tramo, ritmo, Math.random, evitar, escena));
+    setLinea((l) => elige(l));
+    const id = window.setInterval(() => setLinea((l) => elige(l)), 5200);
     return () => window.clearInterval(id);
-  }, [tramo, ritmo, fase, escena]);
+  }, [tramo, ritmo, fase, escena, perrito]);
 
   // Cuando se le acaba el aguante, ya no puede sostenerlo.
   useEffect(() => {
@@ -601,9 +623,11 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
       {/* El teléfono: su propio espacio, nada lo tapa */}
       <div className={styles.momentoTelefono}>
-        {mamando && <Mamada onProgreso={setMama} onFinish={terminarMamada} />}
-        <div style={{ display: mamando ? 'none' : undefined, height: '100%' }}>
-        <Llamada name={nombreEl} incrustada largo pausada={fase === 'decide' || fase === 'parando' || mamando} acelera={fase === 'visto' || fase === 'frente' ? 2 : 1} onProgreso={alProgreso} onFinish={alColgar} empuje={empuje ?? undefined} />
+        <div className={styles.telefonoEscala}>
+          {mamando && <Mamada onProgreso={setMama} onFinish={terminarMamada} />}
+          <div style={{ display: mamando ? 'none' : undefined, height: '100%' }}>
+            <Llamada name={nombreEl} incrustada largo pausada={fase === 'decide' || fase === 'parando' || mamando} acelera={fase === 'visto' || fase === 'frente' ? 2 : 1} onProgreso={alProgreso} onFinish={alColgar} empuje={empuje ?? undefined} />
+          </div>
         </div>
       </div>
     </div>
