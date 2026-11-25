@@ -1,0 +1,463 @@
+diff --git a/src/features/a-sus-espaldas/lib/paseo/escenas.ts b/src/features/a-sus-espaldas/lib/paseo/escenas.ts
+new file mode 100644
+--- /dev/null
++++ b/src/features/a-sus-espaldas/lib/paseo/escenas.ts
+@@ -0,0 +1,168 @@
++import type { Ritmo } from '../minijuegos/llamada2';
++
++/**
++ * Lo que se ve y se dice en la intimidad. Sube con la excitación del teléfono (tramo 0 a 3) y
++ * cambia con el ritmo que eliges. Frases cortas, en segunda persona, desde ella.
++ */
++
++export type Rng = () => number;
++export type Tramo = 0 | 1 | 2 | 3;
++
++const LINEAS: Record<Tramo, Record<Ritmo, readonly string[]>> = {
++  0: {
++    lento: [
++      'Cierras la puerta y te le pegas sin decir nada.',
++      'Le bajas la camisa por los hombros, besando lo que va quedando al aire.',
++      'Le tomas la cara con las dos manos y lo besas largo, sin prisa.',
++      'Le desabrochas el pantalón con los dedos torpes.',
++      'Él te desata el top y se queda mirando, como si no le alcanzara.',
++    ],
++    firme: [
++      'Cierras la puerta. Se besan sin hablar.',
++      'Le quitas la camisa y la tiras a un lado.',
++      'Te empuja contra la pared y te levanta una pierna.',
++      'Le muerdes el cuello; él suelta un gemido bajo.',
++      'Te quita el top y te aprieta contra su pecho.',
++    ],
++    rapido: [
++      'Cierras la puerta y ya están encima el uno del otro.',
++      'Se arrancan la ropa a tirones.',
++      'Te sienta en el borde de la cama y te besa el vientre.',
++      'Te desnuda rápido, sin cuidado, respirando fuerte.',
++      'Le bajas el pantalón de un tirón.',
++    ],
++  },
++  1: {
++    lento: [
++      'Ya sin ropa, se recorren despacio, piel contra piel.',
++      'Te baja la boca por el pecho y te lame un pezón. Se te eriza todo.',
++      'Le pasas la mano por todo el torso, midiéndolo.',
++      'Se acuesta y te sube encima, con calma.',
++      'Entra despacio y los dos se quedan quietos un segundo.',
++    ],
++    firme: [
++      'Le quitas el pantalón y él te quita lo último que te queda.',
++      'Se tocan sin ropa, sin disimulo.',
++      'Te abre las piernas con la rodilla y se acomoda encima.',
++      'Entra de una vez y tú arqueas la espalda.',
++      'Cada embestida te saca un suspiro.',
++    ],
++    rapido: [
++      'Ya no queda ropa en el suelo y no se dan tiempo de nada.',
++      'Te voltea y te toma de la cadera.',
++      'Entra hondo desde el primer empujón.',
++      'La cama golpea la pared.',
++      'Se oyen los dos, sin cuidarse.',
++    ],
++  },
++  2: {
++    lento: [
++      'Se mueven despacio pero hondo, mirándose.',
++      'Él te mira el pubis un segundo antes de volver a entrar.',
++      'Te dice algo al oído y tú cierras los ojos.',
++      'Le clavas las uñas en la espalda y él no se queja.',
++      'Se detiene dentro un momento, respirando en tu cuello.',
++    ],
++    firme: [
++      'El ritmo ya no es amable: la cama se queja.',
++      'Le pides más y él te toma con las dos manos de la cadera.',
++      'Te da fuerte, con la frente pegada a la tuya.',
++      'Ya no besas, solo respiras en su boca.',
++      'Se turnan: él arriba, tú buscando su boca.',
++    ],
++    rapido: [
++      'Ya solo se oye piel y respiración cortada.',
++      'Le empujas tú también, buscando el ritmo.',
++      'Él te levanta de la cintura y no afloja.',
++      'Se te escapa un gemido largo y no lo tapas.',
++      'Los dos están sudados y no quieren parar.',
++    ],
++  },
++  3: {
++    lento: [
++      'Nadie afloja. Los dos saben cómo va a terminar.',
++      'Le tiemblan las piernas; no se detiene.',
++      'Te quedas sin aire y él lo nota.',
++      'Se miran como si se debieran algo.',
++      'Un último empujón lento y todo se aprieta.',
++    ],
++    firme: [
++      'Estás a punto y él lo siente en tu cuerpo.',
++      'Te aferras a sus hombros, ya sin uñas.',
++      'Te lo pide al oído: «ya».',
++      'Se le rompe el ritmo y los dos se apuran.',
++      'Empuja más hondo, dos, tres veces.',
++    ],
++    rapido: [
++      'Ya casi, y los dos lo saben.',
++      'El ritmo se vuelve irregular y desesperado.',
++      'Se te corta la voz en mitad de un gemido.',
++      'Él aguanta la respiración.',
++      'Un último empujón y los dos se quiebran.',
++    ],
++  },
++};
++
++/** Cuando él anda cerca (la misma casa, el mismo hotel) y no se entera. */
++const CERCA: readonly string[] = [
++  'A unos metros, él sigue con el teléfono en la oreja.',
++  'Él está cerca. Te tapas la boca para no oírte.',
++  'Se oye su voz del otro lado. Eso te enciende más.',
++  'Si abriera esa puerta ahora mismo…',
++];
++
++/** El final: llega solo cuando el termómetro se llena. */
++export const CLIMAX: readonly string[] = [
++  'Se viene en tu vientre y los dos se quedan temblando.',
++  'Nadie dice nada. Solo se oyen las respiraciones.',
++  'Se queda dentro un momento, sin soltarte.',
++  'Te deja tibia y se te echa encima, sin aire.',
++];
++
++const pick = <T,>(l: readonly T[], rng: Rng): T => l[Math.floor(rng() * l.length) % l.length];
++
++/** Una línea del tramo y el ritmo actuales. `evitar` es la que ya está en pantalla. */
++export function lineaDe(tramo: Tramo, ritmo: Ritmo, rng: Rng = Math.random, evitar = ''): string {
++  if (rng() < 0.22) {
++    const cerca = pick(CERCA, rng);
++    if (cerca !== evitar) return cerca;
++  }
++  const lista = LINEAS[tramo][ritmo];
++  let t = pick(lista, rng);
++  if (t === evitar) t = pick(lista, rng);
++  return t;
++}
++
++export const climaxDe = (rng: Rng = Math.random): string => pick(CLIMAX, rng);
++
++/** Cuánta ropa queda: se va sola con la excitación. */
++export type RopaEscena = 'bikini' | 'topFuera' | 'desnuda';
++export const ropaDe = (tramo: Tramo): RopaEscena => (tramo === 0 ? 'bikini' : tramo === 1 ? 'topFuera' : 'desnuda');
+diff --git a/src/features/a-sus-espaldas/components/mundo/Chica.tsx b/src/features/a-sus-espaldas/components/mundo/Chica.tsx
+--- a/src/features/a-sus-espaldas/components/mundo/Chica.tsx
++++ b/src/features/a-sus-espaldas/components/mundo/Chica.tsx
+@@ -1,7 +1,7 @@
+ import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
+ 
+ /**
+  * Ella en dibujo plano 2D: cuerpo completo, delgada, pelo largo lacio con raya de lado y
+  * cara sencilla. La cara usa los mismos gestos que el resto del juego.
+  */
+ 
+ export interface Ropa {
+-  tipo?: 'vestido' | 'short' | 'bikini';
++  tipo?: 'vestido' | 'short' | 'bikini' | 'desnuda';
+   short?: string;
+   vestido: string;
+   sombra: string;
+   zapatos: string;
+ }
+@@ -65,8 +65,8 @@
+-const PIEL = '#f4cfb0';
+-const PIEL_SOMBRA = '#e6b794';
++export const PIEL = '#f4cfb0';
++export const PIEL_SOMBRA = '#e6b794';
+ const PELO = '#2b1d22';
+ const PELO_LUZ = '#4a3a58';
+ const TINTA = '#4a3038';
+ const BOCA = '#b8605a';
+@@ -193,6 +193,8 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
+   const sudor = g.extras.includes('sudor');
+   const bikini = ropa.tipo === 'bikini';
++  const desnuda = ropa.tipo === 'desnuda';
++  const sinSujetador = bikini && ropa.vestido === PIEL;
+   const muslo = (lado: 1 | -1): string => {
+@@ -209,7 +211,7 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
+   };
+   const corto = ropa.tipo === 'short' || bikini;
+-  const y0 = bikini ? 284 : corto ? 296 : 340;
++  const y0 = desnuda ? 288 : bikini ? 284 : corto ? 296 : 340;
+   return (
+@@ -238,7 +240,25 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
+         <path d="M116 152 Q120 170 124 152 Z" fillOpacity="0.35" />
+       </g>
+-      {bikini ? (
++      {desnuda ? (
++        <g stroke={TINTA} strokeOpacity="0.18" strokeWidth="0.7">
++          {/* pecho desnudo */}
++          <path d="M100 177 Q110 175 119 183 Q119 197 112 203 Q103 205 98 195 Q95 185 100 177 Z" fill={PIEL} />
++          <path d="M140 177 Q130 175 121 183 Q121 197 128 203 Q137 205 142 195 Q145 185 140 177 Z" fill={PIEL} />
++          <circle cx="107" cy="190" r="4.6" fill={PIEL_SOMBRA} fillOpacity="0.55" stroke="none" />
++          <circle cx="133" cy="190" r="4.6" fill={PIEL_SOMBRA} fillOpacity="0.55" stroke="none" />
++          <circle cx="107" cy="190" r="1.7" fill="#b5715f" stroke="none" />
++          <circle cx="133" cy="190" r="1.7" fill="#b5715f" stroke="none" />
++          {/* pubis */}
++          <path d="M113 268 Q120 273 127 268 Q126 281 120 288 Q114 281 113 268 Z" fill={PIEL_SOMBRA} fillOpacity="0.5" stroke="none" />
++          <path d="M120 277 L120 289" stroke={PIEL_SOMBRA} strokeWidth="1.4" strokeLinecap="round" fill="none" />
++        </g>
++      ) : bikini ? (
+         <g stroke={TINTA} strokeOpacity="0.3" strokeWidth="0.8">
+@@ -250,6 +270,15 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
+           <path d="M100 204 Q108 209 118 203 Q108 213 100 204 Z M140 204 Q132 209 122 203 Q132 213 140 204 Z" fill={PIEL_SOMBRA} fillOpacity="0.45" stroke="none" />
+           <ellipse cx="106" cy="183" rx="3.4" ry="1.7" fill="#fff" fillOpacity="0.4" stroke="none" transform="rotate(-25 106 183)" />
+           <ellipse cx="134" cy="183" rx="3.4" ry="1.7" fill="#fff" fillOpacity="0.4" stroke="none" transform="rotate(25 134 183)" />
++          {sinSujetador && (
++            <g stroke="none">
++              <circle cx="107" cy="190" r="4.4" fill={PIEL_SOMBRA} fillOpacity="0.5" />
++              <circle cx="133" cy="190" r="4.4" fill={PIEL_SOMBRA} fillOpacity="0.5" />
++              <circle cx="107" cy="190" r="1.6" fill="#b5715f" />
++              <circle cx="133" cy="190" r="1.6" fill="#b5715f" />
++            </g>
++          )}
+           <path d="M122 190 Q128 200 129 204 M118 190 Q112 200 111 204" fill="none" stroke={ropa.sombra} strokeOpacity="0.5" strokeWidth="1.2" strokeLinecap="round" />
+diff --git a/src/features/a-sus-espaldas/components/paseo/Chico.tsx b/src/features/a-sus-espaldas/components/paseo/Chico.tsx
+--- a/src/features/a-sus-espaldas/components/paseo/Chico.tsx
++++ b/src/features/a-sus-espaldas/components/paseo/Chico.tsx
+@@ -57,7 +57,7 @@
+-export function CuerpoChico({ look, g, pose = CHICO_PARADO }: { look: Look; g: Gesto; pose?: PoseChico }) {
++export function CuerpoChico({ look, g, pose = CHICO_PARADO, desnudo = false }: { look: Look; g: Gesto; pose?: PoseChico; desnudo?: boolean }) {
+   const paso = pose.paso ?? 0;
+   const piel = look.piel;
+@@ -74,6 +74,13 @@
+       <path d="M147 160 Q153 230 147 292 L139 292 Q144 230 140 158 Z" fill="#000" fillOpacity="0.12" />
+       <path d="M93 284 L147 284" stroke="#000" strokeOpacity="0.25" strokeWidth="6" />
++      {desnudo && (
++        <g>
++          <path d="M100 176 Q110 184 120 178 M140 176 Q130 184 120 178" fill="none" stroke="#000" strokeOpacity="0.12" strokeWidth="1.6" strokeLinecap="round" />
++          <circle cx="105" cy="186" r="2.4" fill="#8f5a44" fillOpacity="0.55" />
++          <circle cx="135" cy="186" r="2.4" fill="#8f5a44" fillOpacity="0.55" />
++        </g>
++      )}
+       {/* cuello */}
+diff --git a/src/features/a-sus-espaldas/components/paseo/Momento.tsx b/src/features/a-sus-espaldas/components/paseo/Momento.tsx
+--- a/src/features/a-sus-espaldas/components/paseo/Momento.tsx
++++ b/src/features/a-sus-espaldas/components/paseo/Momento.tsx
+@@ -1,9 +1,9 @@
+ 'use client';
+ 
+ import { useEffect, useRef, useState } from 'react';
+ import { Cuerpo, POSES, ROPA_BIKINI, PIEL, PIEL_SOMBRA } from '../mundo/Chica';
+-import type { Pose } from '../mundo/Chica';
++import type { Pose, Ropa } from '../mundo/Chica';
+ import { CHICO_PARADO, CuerpoChico } from './Chico';
+@@ -9,10 +9,12 @@
+ import { Llamada } from '../minijuegos/Llamada';
+ import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
+-import type { Call2, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
++import type { Call2, GestoElla, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
+ import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
+ import { LOOK_EL } from '@/features/a-sus-espaldas/lib/mundo/datos';
+ import type { Escena, Look } from '@/features/a-sus-espaldas/lib/mundo/datos';
+@@ -17,24 +19,28 @@
+ import { ALTO, PISO, esconditeDe } from '@/features/a-sus-espaldas/lib/paseo/cuartos';
+ import type { Final, Plan } from '@/features/a-sus-espaldas/lib/paseo/momento';
++import { climaxDe, lineaDe, ropaDe } from '@/features/a-sus-espaldas/lib/paseo/escenas';
++import type { Tramo } from '@/features/a-sus-espaldas/lib/paseo/escenas';
+ import { cn } from '@/lib/cn';
+ import styles from './paseo.module.css';
+ 
+ 
+ /**
+- * El momento a solas: abrazados y con ropa (ella en bikini), se mecen y se besan. Mientras
+- * tanto él llama por teléfono (la llamada está incrustada abajo o al lado, sin tapar la escena).
+- * El ritmo que eliges en el teléfono manda: sube el termómetro de excitación, la escena se mece
+- * más rápido y cambian las caras. Puede durar hasta 10 minutos reales. Si él llega, tú decides.
++ * El momento a solas: se desnudan poco a poco y lo que se lee sube con la excitación. Si él
++ * llega, eliges parar o seguir; si sigues, se queda en la puerta y puedes humillarlo con gestos
++ * hasta que se le quiebra la cara. Puedes ponerlo en altavoz y que lo oiga todo. El ritmo del
++ * teléfono manda: sube el termómetro, mece la escena y cambia las caras. Hasta 10 minutos.
+  */
+ 
+-type Fase = 'sube' | 'pasos' | 'decide' | 'parando' | 'visto' | 'fin';
++type Fase = 'sube' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin';
+@@ -41,6 +47,21 @@
+ const ABRAZO_EL: PoseChico = { izq: [10, 24], der: [56, 100], cab: -9, inc: -4 };
+ const BESO_EL: PoseChico = { izq: [10, 24], der: [56, 100], cab: -15, inc: -6 };
++const DETRAS_EL: PoseChico = { izq: [58, 92], der: [58, 92], cab: -6 };
++const ENCIMA_EL: PoseChico = { izq: [46, 74], der: [46, 74], cab: -12, inc: -3 };
++
++/** Posturas explícitas: se van turnando cuando ya están desnudos. */
++const FUERTES: readonly Pose[] = [
++  POSES.find((p) => p.id === 'arqueada') ?? BESO,
++  POSES.find((p) => p.id === 'aguanta') ?? BESO,
++  POSES.find((p) => p.id === 'piernas') ?? BESO,
++  POSES.find((p) => p.id === 'placer') ?? BESO,
++  POSES.find((p) => p.id === 'rendida') ?? BESO,
++];
++
++// Se desnudan con la excitación: primero el top, después todo.
++const ROPA_TOP_FUERA: Ropa = { ...ROPA_BIKINI, vestido: PIEL, sombra: PIEL_SOMBRA };
++const ROPA_DESNUDA: Ropa = { tipo: 'desnuda', vestido: PIEL, sombra: PIEL_SOMBRA, short: PIEL, zapatos: '#f4efe6' };
+@@ -73,6 +94,11 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sospecha, plan, onFin }: Props) {
+   const [fase, setFase] = useState<Fase>('sube');
+   const [desde, setDesde] = useState(0); // segundos desde que cambió la fase
++  const [linea, setLinea] = useState('Cierras la puerta.');
++  const [aguante, setAguante] = useState(0);
++  const aguanteMax = useRef(20);
++  const [usados, setUsados] = useState<GestoElla[]>([]);
++  const [empuje, setEmpuje] = useState<{ tipo: GestoElla | 'altavoz'; n: number } | null>(null);
+   const t = intensidadDe(call);
+@@ -88,10 +114,13 @@
+-  // El reloj de las fases (los pasos, la puerta, esconder al otro).
+-  useEffect(() => {
+-    const id = window.setInterval(() => setDesde((d) => d + 0.05), 50);
+-    return () => window.clearInterval(id);
+-  }, []);
++  // El reloj de las fases (los pasos, la puerta, esconder al otro) y el aguante de él.
++  useEffect(() => {
++    const id = window.setInterval(() => {
++      setDesde((d) => d + 0.05);
++      if (faseRef.current === 'frente') setAguante((a) => Math.max(0, a - 0.05));
++    }, 50);
++    return () => window.clearInterval(id);
++  }, []);
+@@ -110,7 +139,7 @@
+-    } else if ((f === 'sube' || f === 'pasos' || f === 'visto') && c.fase === 'fin') {
++    } else if ((f === 'sube' || f === 'pasos' || f === 'frente' || f === 'visto') && c.fase === 'fin') {
+       ir('fin');
+     }
+@@ -119,13 +148,28 @@
+-    terminar(f === 'visto' ? 'visto' : 'completo', tRef.current, 0, r);
++    terminar(f === 'visto' || f === 'frente' ? 'visto' : 'completo', tRef.current, 0, r);
+   };
+ 
+   const parar = () => {
+     ir('parando');
+     terminar('parado', tRef.current, 2900, callRef.current ? resultado(callRef.current) : undefined);
+   };
+-  const seguir = () => ir('visto');
++
++  const seguir = () => {
++    // Se queda en la puerta: mientras más roto esté, menos aguanta mirando.
++    const total = Math.max(9, 22 - etapa * 2);
++    aguanteMax.current = total;
++    setAguante(total);
++    ir('frente');
++  };
++
++  const hacerGesto = (tipo: GestoElla) => {
++    if (usados.includes(tipo)) return;
++    setUsados((u) => [...u, tipo]);
++    setEmpuje({ tipo, n: (empuje?.n ?? 0) + 1 });
++    navigator.vibrate?.(20);
++  };
++
++  const ponerAltavoz = () => setEmpuje({ tipo: 'altavoz', n: (empuje?.n ?? 0) + 1 });
+@@ -143,7 +187,7 @@
+   const otroOculto = separados && desde > 0.9;
+ 
+-  const besando = t >= 45;
++  const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
+   const caraElla =
+@@ -161,9 +205,24 @@
+               ? 'deseoella'
+               : 'ojoscerrados';
+-  const caraOtro = fase === 'decide' || fase === 'parando' ? 'miedo' : fase === 'visto' ? 'avergonzado' : t < 20 ? 'nervioso' : t < 45 ? 'embobado' : 'rendido';
+-  const poseElla = fase === 'parando' ? COMO_SI_NADA : t < 20 ? CERCA : besando ? BESO : ABRAZO;
+-  const poseOtro: PoseChico = separados ? { ...CHICO_PARADO, paso: desde < 0.9 ? Math.sin(desde * 18) : 0 } : t < 20 ? CHICO_PARADO : besando ? BESO_EL : ABRAZO_EL;
++  const caraOtro =
++    fase === 'decide' || fase === 'parando' || fase === 'frente'
++      ? 'miedo'
++      : fase === 'visto'
++        ? 'avergonzado'
++        : t < 20
++          ? 'nervioso'
++          : t < 45
++            ? 'embobado'
++            : 'rendido';
++  const poseElla = separados
++    ? COMO_SI_NADA
++    : t < 20
++      ? CERCA
++      : t < 30
++        ? ABRAZO
++        : t < 45
++          ? BESO
++          : FUERTES[(Math.floor(desde / 5) + fase4) % FUERTES.length];
++  const poseOtro: PoseChico = separados
++    ? { ...CHICO_PARADO, paso: desde < 0.9 ? Math.sin(desde * 18) : 0 }
++    : t < 20
++      ? CHICO_PARADO
++      : t < 30
++        ? ABRAZO_EL
++        : t < 45
++          ? BESO_EL
++          : Math.floor(desde / 5) % 2 === 0
++            ? DETRAS_EL
++            : ENCIMA_EL;
+@@ -175,14 +234,16 @@
+-  const elVisible = fase === 'decide' || fase === 'parando' || fase === 'visto' || (fase === 'fin' && plan.entra && t >= plan.en);
++  const elVisible = fase === 'decide' || fase === 'frente' || fase === 'parando' || fase === 'visto' || (fase === 'fin' && plan.entra && t >= plan.en);
+   const listaVisto = ROSTROS_VISTO[Math.max(0, Math.min(5, etapa))];
+   const caraEl =
+     fase === 'decide'
+       ? etapa >= 2 ? 'receloso' : 'curioso'
+-      : fase === 'parando'
+-        ? sospecha >= 40 || desde > 1.6 ? 'sospechosoleve' : 'extrañado'
+-        : listaVisto[Math.min(listaVisto.length - 1, Math.floor(desde / 1.4))];
+-
+-  const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
++      : fase === 'frente'
++        ? aguante > 8 ? (etapa >= 3 ? 'rojo' : 'confundido') : 'vidrioso'
++        : fase === 'parando'
++          ? sospecha >= 40 || desde > 1.6 ? 'sospechosoleve' : 'extrañado'
++          : listaVisto[Math.min(listaVisto.length - 1, Math.floor(desde / 1.4))];
+@@ -196,12 +257,34 @@
+   const colorTermo = t < 35 ? '#86c8ea' : t < 70 ? '#e88fb0' : '#e0457b';
+ 
++  // Cuánta ropa queda y qué se lee: sube con el termómetro y cambia con el ritmo.
++  const tramo: Tramo = fase4 === 3 ? 3 : fase4 === 2 ? 2 : fase4 === 1 ? 1 : 0;
++  const ropa = ropaDe(tramo);
++  const ropaElla = ropa === 'bikini' ? ROPA_BIKINI : ropa === 'topFuera' ? ROPA_TOP_FUERA : ROPA_DESNUDA;
++  const lookOtro = ropa === 'bikini' ? otro.look : { ...otro.look, ropa: otro.look.piel };
++  // Él recoge el top del suelo cuando entra.
++  const topX = fase === 'frente' || fase === 'visto' ? puertaX + 62 : centro + 92;
++  const corrida = t >= 100 || fase === 'fin';
++
++  // La frase cambia sola cada ~5 s mientras la escena sigue; al final se queda una.
++  useEffect(() => {
++    if (fase === 'pasos' || fase === 'decide' || fase === 'parando' || fase === 'frente') return;
++    if (fase === 'fin') {
++      setLinea(climaxDe());
++      return;
++    }
++    setLinea((l) => lineaDe(tramo, ritmo, Math.random, l));
++    const id = window.setInterval(() => setLinea((l) => lineaDe(tramo, ritmo, Math.random, l)), 5200);
++    return () => window.clearInterval(id);
++  }, [tramo, ritmo, fase]);
++
++  // Cuando se le acaba el aguante, ya no puede sostenerlo.
++  useEffect(() => {
++    if (fase === 'frente' && aguante <= 0) ir('visto');
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [fase, aguante]);
++
+   const texto =
+     fase === 'pasos'
+       ? 'Se oyen pasos…'
+       : fase === 'decide'
+         ? `${nombreEl} abre la puerta.`
+-        : fase === 'parando'
+-          ? otroOculto
+-            ? `Lo escondes en ${esc.nombre}.`
+-            : 'Rápido…'
+-          : fase === 'visto'
+-            ? 'No se detienen.'
+-            : fase === 'fin'
+-              ? 'Se quedan abrazados.'
+-              : ['Cierras la puerta.', 'Se abrazan.', 'Un beso.', 'Se olvidan de todo.'][fase4];
++        : fase === 'frente'
++          ? aguante > 8
++            ? `${nombreEl} no se va. Los mira desde la puerta.`
++            : 'Se le está quebrando la cara.'
++          : fase === 'parando'
++            ? otroOculto
++              ? `Lo escondes en ${esc.nombre}.`
++              : 'Rápido…'
++            : fase === 'visto'
++              ?
