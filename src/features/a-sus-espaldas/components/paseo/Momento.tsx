@@ -8,6 +8,10 @@ import type { PoseChico } from './Chico';
 import { Cuarto } from './Cuarto';
 import { SC, SE, poner } from './Escenario';
 import { Llamada } from '../minijuegos/Llamada';
+import { Mamada } from '../minijuegos/Mamada';
+import { CARA_DE, SEPARACION as SEP_MAMADA, Y_RODILLAS, posesDe as posesMamada, profundidadDe, vaiven as vaivenMamada } from './blowjob';
+import { zoomDe } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
+import type { Mamada as EstadoMamada } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
 import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { Call2, GestoElla, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
@@ -30,7 +34,7 @@ import styles from './paseo.module.css';
  * sigues, se queda en la puerta y puedes humillarlo. Puedes ponerlo en altavoz.
  */
 
-type Fase = 'sube' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin';
+type Fase = 'sube' | 'mamada' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin';
 
 const g = (id: string): Gesto => gestoPorId(id) ?? (gestoPorId('neutra') as Gesto);
 
@@ -105,6 +109,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const [linea, setLinea] = useState('Cierras la puerta.');
   const [aguante, setAguante] = useState(0);
   const aguanteMax = useRef(20);
+  const [mama, setMama] = useState<EstadoMamada | null>(null);
+  const [yaMamo, setYaMamo] = useState(false);
   const [usados, setUsados] = useState<GestoElla[]>([]);
   const [empuje, setEmpuje] = useState<{ tipo: GestoElla | 'altavoz'; n: number } | null>(null);
   const t = intensidadDe(call);
@@ -180,6 +186,19 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
     navigator.vibrate?.(20);
   };
 
+  /** Se agacha y lo mama: el teléfono se pausa y entra el minijuego. */
+  const empezarMamada = () => {
+    setMama(null);
+    ir('mamada');
+    navigator.vibrate?.(20);
+  };
+
+  const terminarMamada = () => {
+    setYaMamo(true);
+    setMama(null);
+    ir('sube');
+  };
+
   const ponerAltavoz = () => setEmpuje({ tipo: 'altavoz', n: (empuje?.n ?? 0) + 1 });
 
   // Dónde está todo.
@@ -187,26 +206,32 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const escX = Math.round(ancho * esc.x);
   // La cámara se cierra sobre la pareja según sube la excitación.
   const elVisible = fase === 'decide' || fase === 'frente' || fase === 'parando' || fase === 'visto' || (fase === 'fin' && plan.entra && t >= plan.en);
-  const ventana = Math.round(430 - Math.min(140, t * 1.4));
+  const mamando = fase === 'mamada';
+  // En la mamada la cámara se acerca más cuando él se viene.
+  const ventana = Math.round((430 - Math.min(140, t * 1.4)) * (mamando && mama ? 1 - zoomDe(mama) * 0.3 : 1));
   const foco = escX - 130;
   const x0 = Math.max(0, Math.min(ancho - ventana, foco - ventana / 2));
   const centro = x0 + ventana / 2;
   const puertaX = centro - 216;
 
   const separados = fase === 'parando';
+  const profMamada = profundidadDe(t);
+  const vMamada = vaivenMamada(desde, call?.ritmo ?? 'firme');
   const ritmo: Ritmo = call?.ritmo ?? 'firme';
   // Pasado el punto medio se ponen de perrito, salvo cuando él entra o ella se aparta.
-  const perrito = !separados && fase !== 'decide' && t >= 62;
+  const perrito = !separados && !mamando && fase !== 'decide' && t >= 62;
   // El empuje: va y viene con el ritmo. Mueve al otro hacia ella y a ella un poco.
   const vaiven = perrito ? Math.sin(desde * EMPUJE[ritmo]) : 0;
-  const d = separados ? 0 : perrito ? 30 + vaiven * 2.4 : t < 20 ? lerp(76, 40, t / 20) : t < 45 ? lerp(40, 34, (t - 20) / 25) : lerp(34, 28, (t - 45) / 20);
+  const d = separados ? 0 : mamando ? SEP_MAMADA : perrito ? 30 + vaiven * 2.4 : t < 20 ? lerp(76, 40, t / 20) : t < 45 ? lerp(40, 34, (t - 20) / 25) : lerp(34, 28, (t - 45) / 20);
   const ellaX = separados ? centro - 34 : centro - d / 2 - vaiven * 1.6;
   const otroX = separados ? lerp(centro + 34, escX, desde / 0.9) : centro + d / 2 - vaiven * 3.2;
   const otroOculto = separados && desde > 0.9;
 
   const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
   const caraElla =
-    fase === 'decide'
+    mamando
+      ? CARA_DE[profMamada]
+      : fase === 'decide'
       ? 'sorpresaella'
       : fase === 'parando'
         ? desde > 1.2
@@ -222,7 +247,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 ? 'ojoscerrados'
                 : 'ojoscerrados';
   const caraOtro =
-    fase === 'decide' || fase === 'parando' || fase === 'frente'
+    mamando
+      ? 'rendido'
+      : fase === 'decide' || fase === 'parando' || fase === 'frente'
       ? 'miedo'
       : fase === 'visto'
         ? 'avergonzado'
@@ -233,9 +260,12 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             : perrito
               ? 'rendido'
               : 'rendido';
+  const poseMamada = posesMamada(profMamada, mama?.fase === 'corrida' ? 1 : vMamada);
   const poseElla = separados
     ? COMO_SI_NADA
-    : perrito
+    : mamando
+      ? poseMamada.ella
+      : perrito
       ? PERRO_ELLA
       : t < 20
         ? CERCA
@@ -246,7 +276,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             : FUERTES[(Math.floor(desde / 5) + fase4) % FUERTES.length];
   const poseOtro: PoseChico = separados
     ? { ...CHICO_PARADO, paso: desde < 0.9 ? Math.sin(desde * 18) : 0 }
-    : perrito
+    : mamando
+      ? poseMamada.el
+      : perrito
       ? PERRO_EL
       : t < 20
         ? CHICO_PARADO
@@ -284,7 +316,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const ereccion = Math.min(1, 0.3 + t / 90);
   // Él recoge el top del suelo cuando entra.
   const topX = fase === 'frente' || fase === 'visto' ? puertaX + 62 : centro + 92;
-  const corrida = t >= 100 || fase === 'fin';
+  const corrida = t >= 100 || fase === 'fin' || (mamando && mama?.fase === 'corrida');
   const sudor = Math.min(7, Math.max(0, Math.floor((t - 45) / 8)));
   // Lo que chorrea: desde que se pone de perrito hasta que él entra o ella se aparta.
   const chorrea = perrito && t >= 66;
@@ -309,7 +341,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   }, [fase, aguante]);
 
   const texto =
-    fase === 'pasos'
+    mamando
+      ? mama?.log[mama.log.length - 1] ?? `Te agachas frente a ${nombreEl}.`
+      : fase === 'pasos'
       ? 'Se oyen pasos…'
       : fase === 'decide'
         ? `${nombreEl} abre la puerta.`
@@ -404,7 +438,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 />
               </g>
             </g>
-            <g transform={poner(ellaX, 1, SE)}>
+            <g transform={poner(ellaX, 1, SE, mamando ? Y_RODILLAS * SE : 0)}>
               <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} mojada={t >= 78} />
             </g>
           </g>
@@ -471,6 +505,11 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
           🔊 Ponerlo en altavoz
         </button>
       )}
+      {fase === 'sube' && tramo >= 1 && !yaMamo && (
+        <button type="button" className={styles.mamar} onClick={empezarMamada} data-tour="mamar">
+          💋 Agacharte
+        </button>
+      )}
       {/* El termómetro de excitación: sube con el ritmo que eliges en el teléfono */}
       <div className={styles.termo} role="meter" aria-label="Excitación" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(t)}>
         <small className={styles.termoNivel}>{nivel}/8</small>
@@ -532,7 +571,10 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
       {/* El teléfono: su propio espacio, nada lo tapa */}
       <div className={styles.momentoTelefono}>
-        <Llamada name={nombreEl} incrustada largo pausada={fase === 'decide' || fase === 'parando'} acelera={fase === 'visto' || fase === 'frente' ? 2 : 1} onProgreso={alProgreso} onFinish={alColgar} empuje={empuje ?? undefined} />
+        {mamando && <Mamada onProgreso={setMama} onFinish={terminarMamada} />}
+        <div style={{ display: mamando ? 'none' : undefined, height: '100%' }}>
+        <Llamada name={nombreEl} incrustada largo pausada={fase === 'decide' || fase === 'parando' || mamando} acelera={fase === 'visto' || fase === 'frente' ? 2 : 1} onProgreso={alProgreso} onFinish={alColgar} empuje={empuje ?? undefined} />
+        </div>
       </div>
     </div>
   );

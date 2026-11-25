@@ -853,3 +853,17 @@ a.menuBtn2 {
   0% { opacity: 0; transform: scale(0.2); }
   100% { opacity: 0.9; transform: scale(1); }
 }
+.mamar {
+  position: absolute;
+  z-index: 3;
+  top: calc(env(safe-area-inset-top, 0px) + 2.5rem);
+  right: 4rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.4rem 0.7rem;
+  background: rgba(224, 69, 123, 0.85);
+  color: #fff;
+  font-family: var(--util);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
