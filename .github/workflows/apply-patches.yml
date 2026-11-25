@@ -1,0 +1,62 @@
+name: Aplicar patches
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Rama donde se aplican los patches
+        default: main
+        required: true
+      patch_dir:
+        description: Carpeta con los archivos .patch / .diff
+        default: patches
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-patches-${{ inputs.branch }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ inputs.branch }}
+      PATCH_DIR: ${{ inputs.patch_dir }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Configurar git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Aplicar patches en orden
+        run: |
+          shopt -s nullglob
+          files=("$PATCH_DIR"/*.patch "$PATCH_DIR"/*.diff)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No hay patches en $PATCH_DIR"; exit 0
+          fi
+          mkdir -p "$PATCH_DIR/applied"
+
+          for f in $(printf '%s\n' "${files[@]}" | sort); do
+            echo "::group::Aplicando $f"
+            if head -n1 "$f" | grep -q '^From '; then
+              git am --3way "$f" || { git am --abort; echo "::error::Falló $f"; exit 1; }
+            else
+              git apply --3way --index "$f" || { echo "::error::Falló $f"; exit 1; }
+              git commit -m "Aplicar patch: $(basename "$f")"
+            fi
+            git mv "$f" "$PATCH_DIR/applied/"
+            git commit -m "Archivar patch: $(basename "$f")"
+            echo "::endgroup::"
+          done
+
+      - name: Subir cambios
+        run: git push origin "HEAD:$BRANCH"
