@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Cuerpo, POSES, ROPA_BIKINI, PIEL, PIEL_SOMBRA } from '../mundo/Chica';
+import { Cuerpo, POSES, ROPA_BIKINI, ROPA_DESNUDA, PIEL, PIEL_SOMBRA } from '../mundo/Chica';
 import type { Pose, Ropa } from '../mundo/Chica';
 import { CHICO_PARADO, CuerpoChico } from './Chico';
 import type { PoseChico } from './Chico';
@@ -25,9 +25,9 @@ import styles from './paseo.module.css';
 
 /**
  * El momento a solas: se desnudan poco a poco y la escena se calienta con el termómetro (la
- * cámara se cierra, sudan, se les enciende la piel). Si él llega, eliges parar o seguir; si
- * sigues, se queda en la puerta y puedes humillarlo hasta que se le quiebra la cara. Puedes
- * ponerlo en altavoz. El ritmo del teléfono manda. Hasta 10 minutos reales.
+ * cámara se cierra, sudan, se les enciende la piel, a él se le levanta). Pasado el punto medio
+ * se ponen de perrito y se mueven, y a ella le chorrea. Si él llega, eliges parar o seguir; si
+ * sigues, se queda en la puerta y puedes humillarlo. Puedes ponerlo en altavoz.
  */
 
 type Fase = 'sube' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin';
@@ -44,7 +44,11 @@ const BESO_EL: PoseChico = { izq: [10, 24], der: [56, 100], cab: -15, inc: -6 };
 const DETRAS_EL: PoseChico = { izq: [58, 92], der: [58, 92], cab: -6 };
 const ENCIMA_EL: PoseChico = { izq: [46, 74], der: [46, 74], cab: -12, inc: -3 };
 
-/** Posturas explícitas: se van turnando cuando ya están desnudos. */
+/** De perrito: ella doblada hacia el lado contrario a él, él encima de su cadera. */
+const PERRO_ELLA: Pose = { ...POSES[0], id: 'perro', nombre: 'De perrito', di: 44, fi: 20, dd: 44, fd: 20, inc: -32, cab: -14, sep: 26, rod: 30, baja: 92, cara: 'ojoscerrados' };
+const PERRO_EL: PoseChico = { izq: [56, 78], der: [56, 78], cab: 14, inc: 22 };
+
+/** Posturas explícitas de pie: se van turnando cuando ya están desnudos. */
 const FUERTES: readonly Pose[] = [
   POSES.find((p) => p.id === 'arqueada') ?? BESO,
   POSES.find((p) => p.id === 'aguanta') ?? BESO,
@@ -55,7 +59,6 @@ const FUERTES: readonly Pose[] = [
 
 // Se desnudan con la excitación: primero el top, después todo.
 const ROPA_TOP_FUERA: Ropa = { ...ROPA_BIKINI, vestido: PIEL, sombra: PIEL_SOMBRA };
-const ROPA_DESNUDA: Ropa = { tipo: 'desnuda', vestido: PIEL, sombra: PIEL_SOMBRA, short: PIEL, zapatos: '#f4efe6' };
 
 const ROSTROS_VISTO: readonly (readonly string[])[] = [
   ['confundido', 'vidrioso', 'lloriqueo', 'llanto'],
@@ -70,6 +73,8 @@ const lerp = (a: number, b: number, k: number): number => a + (b - a) * Math.max
 
 /** Cuánto se mece la pareja (segundos por vaivén) según el ritmo que eligió en el teléfono. */
 const MECER: Record<Ritmo, number> = { lento: 3.6, firme: 2.6, rapido: 1.7 };
+/** Velocidad del empuje de perrito, en radianes por segundo. */
+const EMPUJE: Record<Ritmo, number> = { lento: 4.4, firme: 6.6, rapido: 9.4 };
 const SUBE_RITMO: Record<Ritmo, string> = { lento: '›', firme: '››', rapido: '›››' };
 const NOMBRE_RITMO: Record<Ritmo, string> = { lento: 'Despacio', firme: 'Firme', rapido: 'Rápido' };
 
@@ -102,8 +107,6 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const aguanteMax = useRef(20);
   const [usados, setUsados] = useState<GestoElla[]>([]);
   const [empuje, setEmpuje] = useState<{ tipo: GestoElla | 'altavoz'; n: number } | null>(null);
-  const corridaTipo = useRef(0);
-  const yaCorrio = useRef(false);
   const t = intensidadDe(call);
   const tRef = useRef(0);
   tRef.current = t;
@@ -191,9 +194,14 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const puertaX = centro - 216;
 
   const separados = fase === 'parando';
-  const d = separados ? 0 : t < 20 ? lerp(76, 40, t / 20) : t < 45 ? lerp(40, 34, (t - 20) / 25) : lerp(34, 28, (t - 45) / 20);
-  const ellaX = separados ? centro - 34 : centro - d / 2;
-  const otroX = separados ? lerp(centro + 34, escX, desde / 0.9) : centro + d / 2;
+  const ritmo: Ritmo = call?.ritmo ?? 'firme';
+  // Pasado el punto medio se ponen de perrito, salvo cuando él entra o ella se aparta.
+  const perrito = !separados && fase !== 'decide' && t >= 62;
+  // El empuje: va y viene con el ritmo. Mueve al otro hacia ella y a ella un poco.
+  const vaiven = perrito ? Math.sin(desde * EMPUJE[ritmo]) : 0;
+  const d = separados ? 0 : perrito ? 30 + vaiven * 2.4 : t < 20 ? lerp(76, 40, t / 20) : t < 45 ? lerp(40, 34, (t - 20) / 25) : lerp(34, 28, (t - 45) / 20);
+  const ellaX = separados ? centro - 34 : centro - d / 2 - vaiven * 1.6;
+  const otroX = separados ? lerp(centro + 34, escX, desde / 0.9) : centro + d / 2 - vaiven * 3.2;
   const otroOculto = separados && desde > 0.9;
 
   const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
@@ -210,7 +218,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             ? 'nervios'
             : t < 45
               ? 'deseoella'
-              : 'ojoscerrados';
+              : perrito
+                ? 'ojoscerrados'
+                : 'ojoscerrados';
   const caraOtro =
     fase === 'decide' || fase === 'parando' || fase === 'frente'
       ? 'miedo'
@@ -220,27 +230,33 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
           ? 'nervioso'
           : t < 45
             ? 'embobado'
-            : 'rendido';
+            : perrito
+              ? 'rendido'
+              : 'rendido';
   const poseElla = separados
     ? COMO_SI_NADA
-    : t < 20
-      ? CERCA
-      : t < 30
-        ? ABRAZO
-        : t < 45
-          ? BESO
-          : FUERTES[(Math.floor(desde / 5) + fase4) % FUERTES.length];
+    : perrito
+      ? PERRO_ELLA
+      : t < 20
+        ? CERCA
+        : t < 30
+          ? ABRAZO
+          : t < 45
+            ? BESO
+            : FUERTES[(Math.floor(desde / 5) + fase4) % FUERTES.length];
   const poseOtro: PoseChico = separados
     ? { ...CHICO_PARADO, paso: desde < 0.9 ? Math.sin(desde * 18) : 0 }
-    : t < 20
-      ? CHICO_PARADO
-      : t < 30
-        ? ABRAZO_EL
-        : t < 45
-          ? BESO_EL
-          : Math.floor(desde / 5) % 2 === 0
-            ? DETRAS_EL
-            : ENCIMA_EL;
+    : perrito
+      ? PERRO_EL
+      : t < 20
+        ? CHICO_PARADO
+        : t < 30
+          ? ABRAZO_EL
+          : t < 45
+            ? BESO_EL
+            : Math.floor(desde / 5) % 2 === 0
+              ? DETRAS_EL
+              : ENCIMA_EL;
 
   const listaVisto = ROSTROS_VISTO[Math.max(0, Math.min(5, etapa))];
   const caraEl =
@@ -252,7 +268,6 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
           ? sospecha >= 40 || desde > 1.6 ? 'sospechosoleve' : 'extrañado'
           : listaVisto[Math.min(listaVisto.length - 1, Math.floor(desde / 1.4))];
 
-  const ritmo: Ritmo = call?.ritmo ?? 'firme';
   const mecer = separados || fase === 'decide' ? 0 : MECER[ritmo] * [1.25, 1.1, 1, 0.9][fase4];
   const corazones = separados || fase === 'decide' ? 0 : [0, 3, 6, 9][fase4];
   const oscuro = 0.06 + t * 0.0034;
@@ -264,15 +279,16 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const tramo: Tramo = fase4 === 3 ? 3 : fase4 === 2 ? 2 : fase4 === 1 ? 1 : 0;
   const ropa = ropaDe(tramo);
   const ropaElla = ropa === 'bikini' ? ROPA_BIKINI : ropa === 'topFuera' ? ROPA_TOP_FUERA : ROPA_DESNUDA;
-  const lookOtro = ropa === 'bikini' ? otro.look : { ...otro.look, ropa: otro.look.piel };
+  // A él se le va levantando con el termómetro; sin ropa se le ve.
+  const desnudoEl = ropa !== 'bikini';
+  const ereccion = Math.min(1, 0.3 + t / 90);
   // Él recoge el top del suelo cuando entra.
   const topX = fase === 'frente' || fase === 'visto' ? puertaX + 62 : centro + 92;
   const corrida = t >= 100 || fase === 'fin';
-  if (corrida && !yaCorrio.current) {
-    yaCorrio.current = true;
-    corridaTipo.current = Math.floor(Math.random() * 3);
-  }
   const sudor = Math.min(7, Math.max(0, Math.floor((t - 45) / 8)));
+  // Lo que chorrea: desde que se pone de perrito hasta que él entra o ella se aparta.
+  const chorrea = perrito && t >= 66;
+  const charco = Math.min(26, Math.max(0, (t - 66) * 1.4));
 
   // La frase cambia sola cada ~5 s mientras la escena sigue; al final se queda una.
   useEffect(() => {
@@ -377,7 +393,15 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
           <g className={mecer ? styles.mecer : undefined} style={{ transformOrigin: `${centro}px ${PISO}px`, animationDuration: `${mecer || 3}s` }}>
             <g style={{ opacity: otroOculto ? 0 : 1, transition: 'opacity 0.35s' }}>
               <g transform={poner(otroX, separados ? 1 : -1, SC)}>
-                <CuerpoChico look={lookOtro} g={g(caraOtro)} pose={poseOtro} desnudo={ropa !== 'bikini'} />
+                <CuerpoChico
+                  look={otro.look}
+                  g={g(caraOtro)}
+                  pose={poseOtro}
+                  desnudo={desnudoEl}
+                  pene={desnudoEl}
+                  ereccion={ereccion}
+                  corrida={corrida ? 1 : 0}
+                />
               </g>
             </g>
             <g transform={poner(ellaX, 1, SE)}>
@@ -398,29 +422,35 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             />
           </g>
         ))}
-        {/* el final: dentro, en el vientre o en la sábana */}
+        {/* lo que le chorrea por la pierna y el charco que deja */}
+        {chorrea && (
+          <>
+            <ellipse cx={ellaX + 24} cy={PISO - 2} rx={charco} ry={charco * 0.2} fill="#eef3f6" opacity="0.75" pointerEvents="none" />
+            <path
+              d={`M${ellaX + 22} ${PISO - 150} q3 10 -1 20 q-4 10 1 22`}
+              fill="none"
+              stroke="#eef3f6"
+              strokeOpacity="0.55"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              pointerEvents="none"
+            />
+            {[0, 1, 2].map((i) => (
+              <g key={`c${i}`} transform={`translate(${ellaX + 20 + i * 5} ${PISO - 120 - i * 8})`}>
+                <ellipse rx="2.2" ry="3.6" fill="#fff" opacity="0.9" className={styles.sudor} style={{ animationDelay: `${i * 0.55}s` }} />
+              </g>
+            ))}
+          </>
+        )}
+        {/* la mancha y el goteo del final */}
         {corrida && (
           <>
             <ellipse className={styles.mancha} cx={centro - 44} cy={PISO - 2} rx="24" ry="5" fill="#efe7dc" pointerEvents="none" />
-            {corridaTipo.current === 0 ? (
-              <g className={styles.corrida} transform={`translate(${centro - 6} ${PISO - 96})`} pointerEvents="none">
-                <ellipse cx="0" cy="0" rx="5" ry="3" fill="#fff" opacity="0.7" />
-                <ellipse cx="0" cy="10" rx="3.4" ry="6" fill="#fff" opacity="0.55" />
+            {[0, 1, 2, 3].map((i) => (
+              <g key={`g${i}`} transform={`translate(${centro - 14 + ((i * 11) % 26)} ${PISO - 108 - ((i * 13) % 20)})`}>
+                <ellipse rx="1.7" ry="2.6" fill="#fff" opacity="0.9" className={styles.sudor} style={{ animationDelay: `${i * 0.4}s` }} />
               </g>
-            ) : corridaTipo.current === 1 ? (
-              <g className={styles.corrida} transform={`translate(${centro - 6} ${PISO - 118})`} pointerEvents="none">
-                <ellipse cx="0" cy="0" rx="6" ry="4" fill="#fff" opacity="0.95" />
-                <ellipse cx="-5" cy="6" rx="3" ry="4" fill="#fff" opacity="0.9" />
-                <ellipse cx="6" cy="7" rx="2.4" ry="5" fill="#fff" opacity="0.85" />
-                <ellipse cx="1" cy="16" rx="1.8" ry="6" fill="#fff" opacity="0.75" />
-              </g>
-            ) : (
-              <g className={styles.corrida} transform={`translate(${centro - 40} ${PISO - 14})`} pointerEvents="none">
-                <ellipse cx="0" cy="0" rx="9" ry="3" fill="#fff" opacity="0.9" />
-                <ellipse cx="8" cy="3" rx="4" ry="2" fill="#fff" opacity="0.7" />
-                <ellipse cx="-7" cy="4" rx="3" ry="1.6" fill="#fff" opacity="0.6" />
-              </g>
-            )}
+            ))}
           </>
         )}
         {Array.from({ length: corazones }, (_, i) => (
@@ -480,7 +510,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
               <span>👁</span>Sostenerle la mirada
               <small>que le duela</small>
             </button>
-            <button type="button" className={styles.gesto} disabled={usados.includes('tapa')} onClick={() => hacerGesto('tapa')}>
+            <button type="button" className={styles.gesto} disabled={usados.includes('tapas') || usados.includes('tapa')} onClick={() => hacerGesto('tapa')}>
               <span>🫣</span>Taparte la boca
               <small>que no te oiga</small>
             </button>
