@@ -33,6 +33,8 @@ export interface Call2 {
   faseT: number;
   excit: number;
   maxExcit: number;
+  /** lo tienes en altavoz: él oye todo lo que pasa, sin importar el ritmo */
+  altavoz: boolean;
   ritmo: Ritmo;
   sosp: number;
   dano: number;
@@ -286,6 +288,7 @@ export function startCall2(rng: Rng = Math.random, opts: OpcionesLlamada = {}): 
     faseT: 0,
     excit: START_EXCIT,
     maxExcit: START_EXCIT,
+    altavoz: false,
     ritmo: 'firme',
     sosp: 4,
     dano: 0,
@@ -461,7 +464,9 @@ export function tick2(prev: Call2, dt: number, rng: Rng = Math.random): Call2 {
     s.maxExcit = Math.max(s.maxExcit, s.excit);
     // Si el otro va rápido, tu voz se te escapa un poco, aunque no digas nada.
     if (s.ritmo === 'rapido') s.oido = clamp(s.oido + 0.5 * Math.max(0.35, s.escala) * d, 0, 100);
-    else s.oido = clamp(s.oido - 0.4 * d, 0, 100);
+    else if (!s.altavoz) s.oido = clamp(s.oido - 0.4 * d, 0, 100);
+    // En altavoz él oye todo el tiempo, aunque vayas despacio.
+    if (s.altavoz) s.oido = clamp(s.oido + 0.45 * Math.max(0.35, s.escala) * d, 0, 100);
     s.peak = Math.max(s.peak, s.oido);
   }
 
@@ -501,10 +506,47 @@ export function tick2(prev: Call2, dt: number, rng: Rng = Math.random): Call2 {
   return s;
 }
 
+/* ---------- lo que ella hace delante de él ---------- */
+
+/** Lo que ella puede hacer con él en la puerta. */
+export type GestoElla = 'mira' | 'tapa' | 'acerca' | 'nombre';
+
+const GESTO_EFECTO: Record<GestoElla, { sosp: number; dano: number; oido: number; excit: number; texto: string }> = {
+  mira: { sosp: 6, dano: 9, oido: 3, excit: 0.15, texto: 'Le sostienes la mirada mientras el otro sigue.' },
+  tapa: { sosp: 9, dano: 12, oido: -4, excit: 0.1, texto: 'Te tapas la boca con la mano y no dejas de moverte.' },
+  acerca: { sosp: 8, dano: 14, oido: 5, excit: 0.2, texto: 'Le haces una seña y él se sienta en el borde de la cama.' },
+  nombre: { sosp: 14, dano: 18, oido: 12, excit: 0.3, texto: 'Se te escapa su nombre en voz alta. El otro se detiene un segundo.' },
+};
+
+/** Un gesto delante de él: le duele y se le queda dentro. */
+export function gestoElla(prev: Call2, g: GestoElla, rng: Rng = Math.random): Call2 {
+  if (prev.fase === 'fin') return prev;
+  const d = GESTO_EFECTO[g];
+  const s: Call2 = { ...prev };
+  s.sosp = clamp(s.sosp + d.sosp, 0, 100);
+  s.dano = clamp(s.dano + d.dano, 0, 100);
+  s.oido = clamp(s.oido + d.oido, 0, 100);
+  s.excit = Math.min(8, s.excit + d.excit);
+  s.log = [...s.log, { who: 'nota', text: d.texto }];
+  oyeAlgo(s, rng);
+  refrescar(s, rng);
+  return s;
+}
+
+/** Lo pone en altavoz: ya no hay nada que ocultar. */
+export function altavoz(prev: Call2): Call2 {
+  if (prev.altavoz || prev.fase === 'fin') return prev;
+  const s: Call2 = { ...prev, altavoz: true };
+  s.log = [...s.log, { who: 'el', text: 'Espera… ¿qué es ese ruido? Te pongo en altavoz.' }];
+  s.oido = clamp(s.oido + 12, 0, 100);
+  s.sosp = clamp(s.sosp + 10, 0, 100);
+  return s;
+}
+
 /* ---------- resultado ---------- */
 
 export function resultado(s: Call2): CallResult {
-  const score = Math.max(s.oido, s.peak * 0.8, s.sosp * 0.9);
+  const score = Math.max(s.oido, s.peak * 0.8, s.sosp * 0.9, s.altavoz ? 55 : 0);
   const veredicto: CallVerdict = s.sosp >= 100 || score >= 60 ? 'sabe' : score >= 25 ? 'dudas' : 'limpio';
   return {
     intent: s.dano >= 25 ? 'herir' : 'ocultar',
@@ -523,5 +565,6 @@ export function resultado(s: Call2): CallResult {
     climax: s.climax,
     colgo: s.colgo ?? undefined,
     sosp: Math.round(s.sosp),
+    altavoz: s.altavoz,
   };
 }
