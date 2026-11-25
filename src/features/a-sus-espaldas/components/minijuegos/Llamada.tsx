@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  altavoz,
   animoDe,
   colgar,
   comentar,
+  gestoElla,
   nivelDe,
   pulsoDe,
   resultado,
@@ -13,7 +15,7 @@ import {
   startCall2,
   tick2,
 } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
-import type { Call2, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
+import type { Call2, GestoElla, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
 import type { Tono } from '@/features/a-sus-espaldas/lib/contenido';
 import { cn } from '@/lib/cn';
@@ -33,6 +35,8 @@ interface LlamadaProps {
   acelera?: number;
   /** avisa cada vez que cambia algo en la llamada */
   onProgreso?: (s: Call2) => void;
+  /** algo que ella hace desde fuera: un gesto o ponerlo en altavoz. `n` cambia en cada uso. */
+  empuje?: { tipo: GestoElla | 'altavoz'; n: number };
 }
 
 const RITMOS: ReadonlyArray<{ id: Ritmo; label: string }> = [
@@ -58,7 +62,7 @@ const ANIMO_LABEL = {
 
 const fill = (text: string, name: string): string => text.replace(/\{n\}/g, name);
 
-export function Llamada({ name, onFinish, incrustada = false, largo = false, pausada = false, acelera = 1, onProgreso }: LlamadaProps) {
+export function Llamada({ name, onFinish, incrustada = false, largo = false, pausada = false, acelera = 1, onProgreso, empuje }: LlamadaProps) {
   const [s, setS] = useState<Call2>(() => startCall2(Math.random, { largo }));
   const sRef = useRef(s);
   const logEnd = useRef<HTMLDivElement>(null);
@@ -83,6 +87,14 @@ export function Llamada({ name, onFinish, incrustada = false, largo = false, pau
     }, 100);
     return () => window.clearInterval(id);
   }, []);
+
+  // Lo que ella hace desde fuera de la llamada (gestos, altavoz).
+  const empujeN = empuje?.n;
+  useEffect(() => {
+    if (!empuje) return;
+    apply((prev) => (empuje.tipo === 'altavoz' ? altavoz(prev) : gestoElla(prev, empuje.tipo)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empujeN]);
 
   useEffect(() => {
     progresoRef.current?.(s);

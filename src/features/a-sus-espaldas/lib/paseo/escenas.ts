@@ -1,4 +1,5 @@
 import type { Ritmo } from '../minijuegos/llamada2';
+import type { Escena } from '../mundo/datos';
 
 /**
  * Lo que se ve y se dice en la intimidad. Sube con la excitación del teléfono (tramo 0 a 3) y
@@ -122,7 +123,7 @@ export const CLIMAX: readonly string[] = [
 const pick = <T,>(l: readonly T[], rng: Rng): T => l[Math.floor(rng() * l.length) % l.length];
 
 /** Una línea del tramo y el ritmo actuales. `evitar` es la que ya está en pantalla. */
-export function lineaDe(tramo: Tramo, ritmo: Ritmo, rng: Rng = Math.random, evitar = ''): string {
+export function lineaDe(tramo: Tramo, ritmo: Ritmo, rng: Rng = Math.random, evitar = '', _escena?: Escena): string {
   if (rng() < 0.22) {
     const cerca = pick(CERCA, rng);
     if (cerca !== evitar) return cerca;

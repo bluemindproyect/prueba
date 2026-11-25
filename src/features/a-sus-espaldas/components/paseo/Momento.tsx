@@ -510,7 +510,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
               <span>👁</span>Sostenerle la mirada
               <small>que le duela</small>
             </button>
-            <button type="button" className={styles.gesto} disabled={usados.includes('tapas') || usados.includes('tapa')} onClick={() => hacerGesto('tapa')}>
+            <button type="button" className={styles.gesto} disabled={usados.includes('tapa')} onClick={() => hacerGesto('tapa')}>
               <span>🫣</span>Taparte la boca
               <small>que no te oiga</small>
             </button>
