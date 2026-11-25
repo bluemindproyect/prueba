@@ -12,7 +12,7 @@ import { Mamada } from '../minijuegos/Mamada';
 import { Bolita } from './Bolita';
 import type { BolitaAccion, BolitaDatos } from './Bolita';
 import type { Profundidad } from './blowjob';
-import { CARA_DE, SEPARACION as SEP_MAMADA, Y_RODILLAS, posesDe as posesMamada, vaiven as vaivenMamada } from './blowjob';
+import { caraDe, SEPARACION as SEP_MAMADA, Y_RODILLAS, posesDe as posesMamada, vaiven as vaivenMamada } from './blowjob';
 import { zoomDe } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
 import type { Mamada as EstadoMamada } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
 import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
@@ -38,6 +38,8 @@ import styles from './paseo.module.css';
  */
 
 type Fase = 'sube' | 'mamada' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin';
+
+const POSE_CAMINANDO: Pose = POSES.find((p) => p.id === 'caminando') ?? POSES[0];
 
 const g = (id: string): Gesto => gestoPorId(id) ?? (gestoPorId('neutra') as Gesto);
 
@@ -259,7 +261,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
   const separados = fase === 'parando';
   const profMamada: Profundidad = PROFUNDIDADES[hondo];
-  const vMamada = vaivenMamada(desde, ritmoM);
+  const vMamada = vaivenMamada(mama?.succion ?? 0, desde, ritmoM);
   const ritmo: Ritmo = call?.ritmo ?? 'firme';
   // Pasado el punto medio se ponen de perrito, salvo cuando él entra o ella se aparta.
   const perrito = !separados && !mamando && fase !== 'decide' && t >= 62;
@@ -273,7 +275,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
   const caraElla =
     mamando
-      ? CARA_DE[profMamada]
+      ? caraDe(profMamada, vMamada)
       : fase === 'decide'
       ? 'sorpresaella'
       : fase === 'parando'
@@ -359,6 +361,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const ereccion = Math.min(1, 0.3 + t / 90);
   // Él recoge el top del suelo cuando entra.
   const topX = fase === 'frente' || fase === 'visto' ? puertaX + 62 : centro + 92;
+  // Después del sexo: despeinada, hinchada y caminando con las piernas abiertas.
+  const despues = fase === 'fin';
   const corrida = t >= 100 || fase === 'fin' || (mamando && mama?.fase === 'corrida');
   const sudor = Math.min(7, Math.max(0, Math.floor((t - 45) / 8)));
   // Lo que chorrea: desde que se pone de perrito hasta que él entra o ella se aparta.
@@ -499,18 +503,18 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 />
               </g>
             </g>
-            <g transform={poner(ellaX, 1, SE)}>
-  <Cuerpo
-    g={g(caraElla)}
-    ropa={despues ? ROPA_DESNUDA : ROPA_BIKINI}
-    pose={despues ? POSE_CAMINANDO : poseElla}
-    despeinada={despues}
-    caminando={despues}
-    pecho={despues ? 1.35 : 1}
-    hinchada={despues}
-    mojada={despues}
-  />
-</g>
+            <g transform={poner(ellaX, 1, SE, mamando ? Y_RODILLAS * SE : 0)}>
+              <Cuerpo
+                g={g(caraElla)}
+                ropa={despues ? ROPA_DESNUDA : ropaElla}
+                pose={despues ? POSE_CAMINANDO : poseElla}
+                despeinada={despues}
+                caminando={despues}
+                pecho={despues ? 1.35 : 1}
+                hinchada={despues}
+                mojada={despues || t >= 78}
+              />
+            </g>
           </g>
         </g>
         {/* el calor en la piel */}
@@ -588,7 +592,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
         </small>
       </div>
       {fase === 'pasos' && <p className={styles.pasos}>👣 👣 👣</p>}
-      <p key={texto} className={cn(styles.texto, fase === 'pasos' && styles.textoAlerta)} aria-live="polite">
+      {/* El texto ya no se dibuja encima de la escena: solo lo lee el lector de pantalla. */}
+      <p key={texto} className={styles.soloLector} aria-live="polite">
         {texto}
       </p>
       {fase === 'decide' && (
