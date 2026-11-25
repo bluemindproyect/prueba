@@ -65,8 +65,8 @@ export const POSES: readonly Pose[] = [
   { id: 'victoria', nombre: 'Victoria', di: 140, fi: 160, dd: 140, fd: 160, inc: 0, cab: 0, cara: 'victoria' },
 ];
 
-const PIEL = '#f4cfb0';
-const PIEL_SOMBRA = '#e6b794';
+export const PIEL = '#f4cfb0';
+export const PIEL_SOMBRA = '#e6b794';
 const PELO = '#2b1d22';
 const PELO_LUZ = '#4a3a58';
 const TINTA = '#4a3038';
