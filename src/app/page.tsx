@@ -10,7 +10,7 @@ const GAMES = [
   {
     href: '/a-sus-espaldas/paseo',
     title: 'A Sus Espaldas · El paseo',
-    text: 'Caminas con el dedo por tu casa, su trabajo, el gym y el hotel. Él sigue su rutina; tú decides a quién invitar.',
+    text: 'Pantalla completa. Caminas con el dedo por tu casa, su trabajo, el gym y el hotel. Una bolita sobre cada persona abre sus acciones; en la intimidad él te llama y el teléfono manda el ritmo.',
   },
   {
     href: '/tres-anos',

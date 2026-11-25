@@ -1,21 +1,31 @@
 .root {
+  /* El juego ocupa toda la pantalla: el cuarto llena el fondo y lo demás flota encima. */
+  position: fixed;
+  inset: 0;
   height: 100dvh;
   background: #0a0710;
   color: var(--text);
-  display: flex;
-  flex-direction: column;
   font-family: var(--prose);
   overflow: hidden;
 }
 .top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: calc(env(safe-area-inset-top, 0px) + 0.5rem) 0.75rem 0.5rem;
-  background: linear-gradient(#17121f, rgba(23, 18, 31, 0));
+  padding: calc(env(safe-area-inset-top, 0px) + 0.5rem) calc(env(safe-area-inset-right, 0px) + 0.75rem) 1.2rem calc(env(safe-area-inset-left, 0px) + 0.75rem);
+  background: linear-gradient(rgba(10, 7, 16, 0.85), rgba(10, 7, 16, 0));
   font-family: var(--util);
   font-size: 0.75rem;
   color: var(--muted);
+  pointer-events: none;
+}
+.top > * {
+  pointer-events: auto;
 }
 .topLugar {
   flex: 1;
@@ -42,14 +52,13 @@
   font-size: 1.2rem;
 }
 .escena {
-  flex: 1;
-  position: relative;
+  position: absolute;
+  inset: 0;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   overflow: hidden;
   background: #0d0a12;
-  min-height: 300px;
 }
 .svg {
   display: block;
@@ -117,20 +126,32 @@
   to { opacity: 1; transform: none; }
 }
 
-/* Barra de abajo: elegir qué haces y saber qué es cada cosa */
-.barra {
-  padding: 0.6rem 0.75rem calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
-  background: linear-gradient(rgba(23, 18, 31, 0), #17121f 20%);
+/* Lo que flota sobre el cuarto: la última nota y quién está cerca, arriba; las acciones sueltas, abajo */
+.info {
+  position: absolute;
+  z-index: 4;
+  top: calc(env(safe-area-inset-top, 0px) + 3.1rem);
+  left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  pointer-events: none;
 }
 .quien {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0.3rem 0.35rem 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(23, 18, 31, 0.72);
+  backdrop-filter: blur(6px);
   color: var(--muted);
   font-family: var(--util);
   font-size: 0.75rem;
-  min-height: 24px;
+  min-height: 32px;
 }
 .quien b {
   color: var(--text);
@@ -146,12 +167,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Lo último que pasó, en una línea corta arriba de los botones */
 .nota {
-  margin: 0 0 0.5rem;
+  margin: 0;
+  align-self: flex-start;
+  max-width: min(34rem, 100%);
+  padding: 0.45rem 0.8rem;
+  border-radius: 14px;
+  background: rgba(23, 18, 31, 0.72);
+  backdrop-filter: blur(6px);
   font-family: var(--prose);
   font-style: italic;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   line-height: 1.35;
   color: var(--text);
   display: -webkit-box;
@@ -164,10 +190,61 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
-.acciones {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+/* Acciones que no son de una persona: bolitas chicas en la esquina de abajo a la derecha */
+.dock {
+  position: absolute;
+  z-index: 4;
+  right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.5rem;
+  max-width: calc(100% - 1.5rem);
+}
+.dockBtn {
+  width: 58px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--util);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 4px #000;
+  -webkit-tap-highlight-color: transparent;
+}
+.dockIco {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  background: rgba(44, 34, 57, 0.9);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s, background 0.15s;
+}
+.dockBtn:active .dockIco {
+  transform: scale(0.93);
+  background: #352942;
+}
+.dockBtn:disabled {
+  opacity: 0.4;
+}
+.dockRosa .dockIco {
+  background: linear-gradient(#e0457b, #8f2a52);
+  border-color: #e0457b;
+  animation: dockLate 1.6s ease-in-out infinite;
+}
+@keyframes dockLate {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
 }
 .accion {
   background: var(--raised);
@@ -186,24 +263,25 @@
 }
 .accion:active { transform: scale(0.97); background: #352942; }
 .accion:disabled { opacity: 0.4; }
-.accionRosa {
-  background: linear-gradient(#e0457b, #8f2a52);
-  border-color: #e0457b;
-  color: #fff;
+.abrazoSube {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: abrazoSube 2.3s ease-out both;
+  pointer-events: none;
 }
-.accionSola {
-  grid-column: 1 / -1;
-}
-.accionIco {
-  font-size: 1.3rem;
+@keyframes abrazoSube {
+  0% { transform: translateY(14px) scale(0.2); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-120px) scale(var(--s, 1)); opacity: 0; }
 }
 .ayuda {
   background: transparent;
   border: 0;
   color: var(--lamp);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   margin-left: auto;
-  padding: 0.3rem 0.5rem;
+  padding: 0.2rem 0.5rem;
+  pointer-events: auto;
 }
 
 /* El momento juntos */
@@ -212,11 +290,32 @@
   inset: 0;
   background: #000;
   z-index: 50;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* Vertical: la escena arriba y el teléfono abajo. Nada se encima. */
+  grid-template-rows: minmax(0, 42fr) minmax(0, 58fr);
 }
-.momento .svg {
-  flex: 1;
+.momentoEscena {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+.momentoTelefono {
+  min-height: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #0a0710;
+}
+.momentoEscena .svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Horizontal (o pantalla ancha): la escena a la izquierda y el teléfono a la derecha. */
+@media (orientation: landscape) and (min-width: 560px) {
+  .momento {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  }
 }
 .lugarMomento {
   position: absolute;
@@ -230,47 +329,78 @@
   font-size: 0.75rem;
   color: var(--text);
 }
-.intensidad {
+.termo {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
-  right: 0.75rem;
+  z-index: 3;
+  top: calc(env(safe-area-inset-top, 0px) + 2.6rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.6rem);
+  bottom: 3.2rem;
+  width: 2.6rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  background: rgba(23, 18, 31, 0.75);
-  padding: 0.3rem 0.5rem 0.3rem 0.65rem;
-  border-radius: 999px;
+  gap: 0.25rem;
+  padding: 0.35rem 0.2rem;
+  border-radius: 1.4rem;
+  background: rgba(23, 18, 31, 0.72);
+  backdrop-filter: blur(4px);
+  font-family: var(--util);
+  color: var(--text);
 }
-.latido {
+.termoNivel,
+.termoRitmo {
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.termoRitmo {
+  font-size: 0.95rem;
   color: var(--rose);
-  font-size: 1.1rem;
+  letter-spacing: -0.1em;
+}
+.termoTubo {
+  position: relative;
+  flex: 1;
+  width: 0.9rem;
+  min-height: 3rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+.termoTubo i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 999px;
+  transition: height 0.25s linear;
+}
+.termoTubo b {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.termoBulbo {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 0.95rem;
+  margin-top: -0.55rem;
   animation: latido 0.8s ease-in-out infinite;
-  display: inline-block;
+  transition: background 0.4s;
 }
 @keyframes latido {
   0%, 60%, 100% { transform: scale(1); }
-  30% { transform: scale(1.25); }
-}
-.tubo {
-  width: 70px;
-  height: 7px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-  overflow: hidden;
-  position: relative;
-  transform: rotate(0deg);
-}
-.tubo i {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  background: linear-gradient(90deg, #86c8ea, #e88fb0 60%, #e0457b);
-  transition: height 0.2s linear;
+  30% { transform: scale(1.2); }
 }
 .texto {
   position: absolute;
-  bottom: 120px;
+  bottom: 4.6rem;
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -295,7 +425,7 @@
 }
 .pasos {
   position: absolute;
-  bottom: 170px;
+  bottom: 7.6rem;
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -308,9 +438,9 @@
 }
 .decide {
   position: absolute;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  bottom: 0.6rem;
   left: 0.75rem;
-  right: 0.75rem;
+  right: 4rem;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
@@ -323,18 +453,19 @@
 .parar, .seguir {
   border: 0;
   border-radius: 14px;
-  padding: 0.9rem;
+  padding: 0.5rem;
   font-family: var(--prose);
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-style: italic;
   color: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  min-height: 72px;
+  gap: 0.1rem;
+  min-height: 60px;
 }
-.parar span, .seguir span { font-size: 1.6rem; }
+.parar span, .seguir span { font-size: 1.4rem; }
+.parar small, .seguir small { font-family: var(--util); font-style: normal; font-size: 0.65rem; opacity: 0.85; }
 .parar { background: linear-gradient(#86c8ea, #3a6b86); }
 .seguir { background: linear-gradient(#e0457b, #8f2a52); }
 .mecer { animation: mecer 3s ease-in-out infinite; }

@@ -1,0 +1,133 @@
+/* La bolita de acciones: se abre al mantenerla apretada y se elige arrastrando */
+.ancla {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 6;
+}
+.velo {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 7, 16, 0.4);
+  animation: veloIn 0.2s ease both;
+}
+@keyframes veloIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.bola {
+  position: absolute;
+  left: -30px;
+  top: -30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background: radial-gradient(circle at 35% 30%, #f58bb0, #c63b73 70%, #8f2a52);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(232, 80, 127, 0.6);
+  animation: late 1.8s ease-in-out infinite;
+  transition: transform 0.15s;
+}
+.bola:active,
+.bolaAbierta {
+  transform: scale(0.92);
+}
+.bolaAbierta {
+  animation: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(232, 80, 127, 0.25);
+}
+@keyframes late {
+  0% { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(232, 80, 127, 0.55); }
+  70% { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 16px rgba(232, 80, 127, 0); }
+  100% { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(232, 80, 127, 0); }
+}
+.sitio {
+  position: absolute;
+  left: -27px;
+  top: -27px;
+  width: 54px;
+  height: 54px;
+  animation: sale 0.28s cubic-bezier(0.2, 1.2, 0.4, 1) var(--d, 0ms) both;
+}
+@keyframes sale {
+  from { transform: translate(0, 0) scale(0.3); opacity: 0; }
+  to { transform: translate(var(--x), var(--y)) scale(1); opacity: 1; }
+}
+.opcion {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--raised);
+  color: var(--text);
+  font-size: 1.45rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s, background 0.12s, border-color 0.12s;
+}
+.opcionRosa {
+  background: linear-gradient(#e0457b, #8f2a52);
+  border-color: #e0457b;
+}
+.opcionSobre {
+  transform: scale(1.3);
+  border-color: #fff;
+  background: #4b3a60;
+}
+.opcionRosa.opcionSobre {
+  background: linear-gradient(#f0558b, #a8325f);
+}
+.opcionOff {
+  opacity: 0.4;
+}
+.rotulo {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(23, 18, 31, 0.92);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: var(--prose);
+  font-style: italic;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.rotuloAbajo {
+  top: 42px;
+}
+.rotuloArriba {
+  bottom: 42px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bola,
+  .sitio,
+  .velo {
+    animation: none;
+  }
+  .sitio {
+    transform: translate(var(--x), var(--y));
+  }
+}

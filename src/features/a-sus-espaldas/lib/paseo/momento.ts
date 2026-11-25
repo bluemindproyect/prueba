@@ -2,6 +2,7 @@ import { SEDUCE } from '../mundo/datos';
 import type { Persona } from '../mundo/datos';
 import { avanzar, chanceDeSi, elAqui, elCerca, etapaDe, fmt, lugarPorId, personas, tramoEl } from '../mundo/motor';
 import type { Estado } from '../mundo/motor';
+import type { CallResult } from '../minijuegos/llamada';
 
 /**
  * El paseo: invitar a alguien para que te siga y el momento a solas, con la puerta cerrada.
@@ -91,7 +92,7 @@ export interface Resultado {
 }
 
 /** Termina el momento: lo que ganas tú y lo que le pasa a él. No modifica el estado anterior. */
-export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final, alcanzado: number, rng: Rng = Math.random): Resultado {
+export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final, alcanzado: number, rng: Rng = Math.random, llamada?: CallResult): Resultado {
   const lugar = lugarPorId(e.ciclo, e.lugar);
   const motivos: { icono: string; texto: string }[] = [];
   let sat = 8;
@@ -117,6 +118,22 @@ export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final,
   if ((e.veces[p.id] ?? 0) === 0) {
     sat += 5;
     motivos.push({ icono: '✨', texto: 'Primera vez' });
+  }
+  // La llamada que él te hizo mientras tanto: cuánto duró, si lo hiciste sentir y si se oyó algo.
+  if (llamada) {
+    const min = llamada.seconds / 60;
+    if (min >= 1) {
+      sat += Math.min(10, Math.round(min * 2));
+      motivos.push({ icono: '⏱', texto: `Duró ${Math.floor(min)} min por teléfono` });
+    }
+    if (llamada.hurt >= 25) {
+      sat += Math.round(llamada.hurt * 0.12);
+      motivos.push({ icono: '📞', texto: 'Se lo hiciste sentir por teléfono' });
+    }
+    if (llamada.climax === 'oyo') {
+      sat += 6;
+      motivos.push({ icono: '🔊', texto: 'Se oyó todo al final' });
+    }
   }
   if (final === 'parado') sat *= Math.max(0.3, alcanzado / 100);
   if (final === 'visto') {
@@ -167,6 +184,20 @@ export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final,
       s.sabe = [...s.sabe, 'Llegaste distinta'].slice(-12);
       frase += ' Pero luego te nota algo distinto.';
     }
+  }
+
+  if (llamada) {
+    // Lo que él oyó por teléfono pesa aunque no los haya visto.
+    if (llamada.verdict === 'sabe') {
+      s.sospecha = clamp(s.sospecha + 25);
+      s.quiebre = clamp(s.quiebre + 5);
+      s.sabe = [...s.sabe, 'Oyó algo raro por teléfono'].slice(-12);
+      frase += ` Por teléfono ${n} oyó más de lo que debía.`;
+    } else if (llamada.verdict === 'dudas') {
+      s.sospecha = clamp(s.sospecha + 8);
+      frase += ` Por teléfono le quedó algo sin cuadrar.`;
+    }
+    s.quiebre = clamp(s.quiebre + llamada.hurt * 0.05);
   }
 
   s = avanzar(s, final === 'parado' ? 12 : 38);

@@ -58,7 +58,22 @@ export interface Call2 {
   /** frase de cómo va el otro (según el ritmo) */
   narra: string;
   log: readonly Linea[];
+  /** qué tan lento sube la excitación: 1 es la llamada corta de siempre; 0.2 es la larga del paseo */
+  escala: number;
+  /** segundos máximos antes de forzar el final (0 = sin límite) */
+  limite: number;
+  /** cuántas preguntas como máximo */
+  maxPreg: number;
 }
+
+/** Opciones al empezar una llamada. */
+export interface OpcionesLlamada {
+  /** la llamada del paseo: dura hasta 10 minutos y el ritmo que eliges decide cuánto tarda */
+  largo?: boolean;
+}
+
+/** Lo más que dura la llamada larga, en segundos (10 minutos reales). */
+export const LIMITE_LARGO = 600;
 
 /* ---------- ajustes ---------- */
 
@@ -264,7 +279,7 @@ function llevarA(s: Call2, fase: Fase): void {
 
 /* ---------- inicio ---------- */
 
-export function startCall2(rng: Rng = Math.random): Call2 {
+export function startCall2(rng: Rng = Math.random, opts: OpcionesLlamada = {}): Call2 {
   const s: Call2 = {
     t: 0,
     fase: 'pregunta',
@@ -293,6 +308,9 @@ export function startCall2(rng: Rng = Math.random): Call2 {
     pobre: '',
     narra: '',
     log: [],
+    escala: opts.largo ? 0.2 : 1,
+    limite: opts.largo ? LIMITE_LARGO : 0,
+    maxPreg: opts.largo ? 400 : MAX_PREGUNTAS,
   };
   const q = siguientePregunta(s, rng);
   s.pregunta = q;
@@ -437,10 +455,12 @@ export function tick2(prev: Call2, dt: number, rng: Rng = Math.random): Call2 {
 
   if (s.fase === 'pregunta' || s.fase === 'reaccion') {
     const bonus = (s.dano / 100) * 0.09 + (s.pobre && s.dano >= 35 ? 0.03 : 0);
-    s.excit = Math.min(8, s.excit + (EXCIT_RATE[s.ritmo] + bonus) * d);
+    s.excit = Math.min(8, s.excit + (EXCIT_RATE[s.ritmo] + bonus) * s.escala * d);
+    // Pasados los 10 minutos de la llamada larga, el final llega solo.
+    if (s.limite > 0 && s.t >= s.limite) s.excit = 8;
     s.maxExcit = Math.max(s.maxExcit, s.excit);
     // Si el otro va rápido, tu voz se te escapa un poco, aunque no digas nada.
-    if (s.ritmo === 'rapido') s.oido = clamp(s.oido + 0.5 * d, 0, 100);
+    if (s.ritmo === 'rapido') s.oido = clamp(s.oido + 0.5 * Math.max(0.35, s.escala) * d, 0, 100);
     else s.oido = clamp(s.oido - 0.4 * d, 0, 100);
     s.peak = Math.max(s.peak, s.oido);
   }
@@ -460,14 +480,14 @@ export function tick2(prev: Call2, dt: number, rng: Rng = Math.random): Call2 {
     }
   }
 
-  if (s.fase === 'reaccion' && s.faseT >= REACT_SECS) {
+  if (s.fase === 'reaccion' && s.faseT >= (s.escala < 1 ? REACT_SECS * 2.5 : REACT_SECS)) {
     if (s.sosp >= 100) {
       s.log = [...s.log, { who: 'el', text: 'No puedo más con esto. Voy a colgar.' }];
       s.colgo = 'el';
       llevarA(s, 'fin');
       return s;
     }
-    const q = s.preguntas >= MAX_PREGUNTAS ? null : siguientePregunta(s, rng);
+    const q = s.preguntas >= s.maxPreg ? null : siguientePregunta(s, rng);
     if (!q) {
       llevarA(s, 'cuelga');
       return s;

@@ -3,7 +3,7 @@
 Dos juegos de ficción interactiva para adultos, hechos con Next.js (App Router), React y TypeScript. Todos los personajes y las historias son inventados.
 
 - **A Sus Espaldas** (`/a-sus-espaldas`): 100 acciones en 10 niveles, combos, récords y muñequitos, con él vivo en tiempo real: pulso, ánimo, pensamientos, lo que no le cuadra y lo que hace por su cuenta.
-- **A Sus Espaldas · El paseo** (`/a-sus-espaldas/paseo`): el mismo mundo, pero caminando con el dedo por cuartos vistos de lado (ver «El paseo»).
+- **A Sus Espaldas · El paseo** (`/a-sus-espaldas/paseo`): la pantalla principal, a pantalla completa y en 2D: caminas con el dedo por cuartos vistos de lado (ver «El paseo»). El mundo en 3D se quitó.
 - **Tres Años** (`/tres-anos`): historia con decisiones y un final que depende de lo que elegiste.
 
 La partida se guarda en el navegador (`localStorage`). La base de datos de Supabase ya está lista para guardar partidas en la nube, récords, logros y estadísticas de minijuegos (ver «Base de datos»), pero el juego todavía no se conecta a ella.
@@ -104,15 +104,16 @@ Para que el enlace del correo funcione, en Supabase → Authentication → URL C
 
 ## El paseo
 
-`/a-sus-espaldas/paseo` usa la misma partida que «El mundo» (`a-sus-espaldas-mundo-v1` en el navegador y `partidas` en Supabase si entras con tu correo).
+`/a-sus-espaldas/paseo` ocupa toda la pantalla: el cuarto llena el fondo y lo demás flota encima. Usa la misma partida de siempre (`a-sus-espaldas-mundo-v1` en el navegador y `partidas` en Supabase si entras con tu correo). `/a-sus-espaldas/mundo` redirige aquí.
 
-- **Caminar**: tocas o mantienes el dedo y ella camina hacia allá (en computadora, flechas o A y D). En las orillas están las puertas: al cuarto de al lado o a la calle, que abre el mapa.
-- **Quién está cerca**: abajo sale su nombre; los corazones sobre su cabeza dicen qué tan fácil te diría que sí.
+- **Caminar**: tocas o mantienes el dedo y ella camina hacia allá (en computadora, flechas o A y D). En las orillas están las puertas: al cuarto de al lado o a la calle, que abre el mapa. El botón ⛶ de arriba pide pantalla completa del navegador.
+- **La bolita**: al llegar junto a alguien sale una bolita sobre su cabeza. Mantenla apretada y se abren más bolitas alrededor; sin soltar, arrastra hasta la que quieras y suéltala ahí para hacerla. También se puede tocar una vez y luego tocar la opción (o Enter y Tab con el teclado). Las acciones que no son de una persona (mapa, esperar, limpiar rastros, cerrar la puerta) están en las bolitas chicas de abajo a la derecha.
+- **Ser tierna con él**: ella camina hasta él, abre los brazos y lo abraza; suben corazones y su cara refleja lo que siente (sospecha, quiebre): sereno y enamorado si confía, forzado o receloso si desconfía, vidrioso si está roto.
 - **Invitar**: si dice que sí, te sigue. En un lugar con 🔒 donde él no esté aparece «Cerrar la puerta».
-- **El momento**: abrazados, se mecen y se besan; la intensidad sube sola. Si él llega, eliges parar o seguir. Al final sale cuánto ganaste y qué le pasó a él.
+- **El momento**: cada vez que empieza la intimidad con alguien, él llama y el teléfono sale incrustado (abajo en vertical, a la derecha en horizontal) sin tapar la escena; las ventanas de «se te escapa» y «se acaba la llamada» van dentro del teléfono. El ritmo que eliges (despacio, firme o rápido) decide qué tan rápido sube el termómetro de excitación y cuánto se mecen; puede durar hasta 10 minutos reales (a los 10 llega el final solo). Si él llega, eliges parar o seguir. Al final sale cuánto ganaste y qué le pasó a él.
 - **Guía**: la primera vez se explica cada parte en pantalla (Driver.js); el botón «?» la repite.
 
-Archivos: `components/paseo/Paseo.tsx` (pantalla principal), `Escenario.tsx` (caminar), `Cuarto.tsx` (cuartos), `Chico.tsx` (él y los demás), `Momento.tsx`; reglas en `lib/paseo/` y la guía en `components/guia.ts`.
+Archivos: `components/paseo/Paseo.tsx` (pantalla principal), `Escenario.tsx` (caminar y abrazo), `Bolita.tsx` (la bolita de acciones), `abrazo.ts` (posturas del abrazo), `Cuarto.tsx` (cuartos), `Chico.tsx` (él y los demás), `Momento.tsx` (intimidad con el teléfono y el termómetro); reglas en `lib/paseo/` y la guía en `components/guia.ts`.
 
 ## Agregar contenido
 

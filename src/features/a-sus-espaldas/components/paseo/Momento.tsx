@@ -7,7 +7,10 @@ import { CHICO_PARADO, CuerpoChico } from './Chico';
 import type { PoseChico } from './Chico';
 import { Cuarto } from './Cuarto';
 import { SC, SE, poner } from './Escenario';
-import { mostrarGuia, yaVista } from '../guia';
+import { Llamada } from '../minijuegos/Llamada';
+import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
+import type { Call2, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
+import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
 import { LOOK_EL } from '@/features/a-sus-espaldas/lib/mundo/datos';
 import type { Escena, Look } from '@/features/a-sus-espaldas/lib/mundo/datos';
 import { gestoPorId } from '@/features/a-sus-espaldas/lib/mundo/gestos';
@@ -19,8 +22,10 @@ import styles from './paseo.module.css';
 
 
 /**
- * El momento a solas: abrazados y con ropa (ella en bikini), se mecen y se besan. Sus caras
- * cambian poco a poco y la intensidad sube sola, sin botones. Si él llega, tú decides.
+ * El momento a solas: abrazados y con ropa (ella en bikini), se mecen y se besan. Mientras
+ * tanto él llama por teléfono (la llamada está incrustada abajo o al lado, sin tapar la escena).
+ * El ritmo que eliges en el teléfono manda: sube el termómetro de excitación, la escena se mece
+ * más rápido y cambian las caras. Puede durar hasta 10 minutos reales. Si él llega, tú decides.
  */
 
 type Fase = 'sube' | 'pasos' | 'decide' | 'parando' | 'visto' | 'fin';
@@ -46,6 +51,17 @@ const ROSTROS_VISTO: readonly (readonly string[])[] = [
 
 const lerp = (a: number, b: number, k: number): number => a + (b - a) * Math.max(0, Math.min(1, k));
 
+/** Cuánto se mece la pareja (segundos por vaivén) según el ritmo que eligió en el teléfono. */
+const MECER: Record<Ritmo, number> = { lento: 3.6, firme: 2.6, rapido: 1.7 };
+const SUBE_RITMO: Record<Ritmo, string> = { lento: '›', firme: '››', rapido: '›››' };
+const NOMBRE_RITMO: Record<Ritmo, string> = { lento: 'Despacio', firme: 'Firme', rapido: 'Rápido' };
+
+/** Intensidad de 0 a 100: es la excitación del teléfono (de 1 a 8) puesta en porcentaje. */
+const intensidadDe = (c: Call2 | null): number => {
+  if (!c) return 0;
+  if (c.fase === 'fin' && c.climax !== 'no') return 100;
+  return Math.max(0, Math.min(100, ((c.excit - 1) / 7) * 100));
+};
 interface Props {
   escena: Escena;
   ancho: number;
@@ -56,14 +72,17 @@ interface Props {
   etapa: number;
   sospecha: number;
   plan: Plan;
-  onFin: (final: Final, alcanzado: number) => void;
+  onFin: (final: Final, alcanzado: number, llamada?: CallResult) => void;
 }
 
 export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sospecha, plan, onFin }: Props) {
-  const [t, setT] = useState(0);
+  const [call, setCall] = useState<Call2 | null>(null);
+  const callRef = useRef<Call2 | null>(null);
   const [fase, setFase] = useState<Fase>('sube');
   const [desde, setDesde] = useState(0); // segundos desde que cambió la fase
+  const t = intensidadDe(call);
   const tRef = useRef(0);
+  tRef.current = t;
   const faseRef = useRef<Fase>('sube');
   const fin = useRef(false);
   const alFin = useRef(onFin);
@@ -75,55 +94,45 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
     setDesde(0);
   };
 
-  const terminar = (final: Final, alcanzado: number, espera: number) => {
+  const terminar = (final: Final, alcanzado: number, espera: number, llamada?: CallResult) => {
     if (fin.current) return;
     fin.current = true;
-    window.setTimeout(() => alFin.current(final, alcanzado), espera);
+    window.setTimeout(() => alFin.current(final, alcanzado, llamada), espera);
   };
 
+  // El reloj de las fases (los pasos, la puerta, esconder al otro).
   useEffect(() => {
-    const id = window.setInterval(() => {
-      const f = faseRef.current;
-      setDesde((d) => d + 0.05);
-      if (f === 'decide' || f === 'fin' || f === 'parando') return;
-      const rate = f === 'visto' ? 5 : 3;
-      tRef.current = Math.min(100, tRef.current + rate * 0.05);
-      setT(tRef.current);
-      if (f === 'sube' && plan.entra && tRef.current >= plan.en - 10) {
-        ir('pasos');
-        navigator.vibrate?.(40);
-      } else if (f === 'pasos' && tRef.current >= plan.en) {
-        ir('decide');
-        navigator.vibrate?.([30, 60, 30]);
-      } else if (tRef.current >= 100 && (f === 'sube' || f === 'visto')) {
-        ir('fin');
-        terminar(f === 'visto' ? 'visto' : 'completo', 100, 1700);
-      }
-    }, 50);
+    const id = window.setInterval(() => setDesde((d) => d + 0.05), 50);
     return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // La primera vez que él entra: explicar las dos opciones.
-  useEffect(() => {
-    if (fase !== 'decide' || yaVista('paseo-decidir')) return;
-    const id = window.setTimeout(
-      () =>
-        mostrarGuia(
-          [
-            { el: '[data-tour="parar"]', titulo: 'Parar', texto: 'Escondes al otro rápido. Él sospecha, pero no ve nada.' },
-            { el: '[data-tour="seguir"]', titulo: 'Seguir', texto: 'No se detienen y él los ve. Ganas más, pero a él lo rompe.' },
-          ],
-          { id: 'paseo-decidir' },
-        ),
-      350,
-    );
-    return () => window.clearTimeout(id);
-  }, [fase]);
+  /** Cada cambio del teléfono: de ahí sale la intensidad, y con ella cuándo llegan los pasos y él. */
+  const alProgreso = (c: Call2) => {
+    callRef.current = c;
+    setCall(c);
+    const tt = intensidadDe(c);
+    const f = faseRef.current;
+    if (f === 'sube' && plan.entra && tt >= plan.en - 10) {
+      ir('pasos');
+      navigator.vibrate?.(40);
+    } else if (f === 'pasos' && tt >= plan.en) {
+      ir('decide');
+      navigator.vibrate?.([30, 60, 30]);
+    } else if ((f === 'sube' || f === 'pasos' || f === 'visto') && c.fase === 'fin') {
+      ir('fin');
+    }
+  };
+
+  /** La llamada se acabó (colgaste, colgó él o llegó el final). */
+  const alColgar = (r: CallResult) => {
+    const f = faseRef.current;
+    if (f === 'parando' || f === 'decide') return;
+    terminar(f === 'visto' ? 'visto' : 'completo', tRef.current, 0, r);
+  };
 
   const parar = () => {
     ir('parando');
-    terminar('parado', tRef.current, 2900);
+    terminar('parado', tRef.current, 2900, callRef.current ? resultado(callRef.current) : undefined);
   };
   const seguir = () => ir('visto');
 
@@ -160,7 +169,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const poseElla = fase === 'parando' ? COMO_SI_NADA : t < 20 ? CERCA : besando ? BESO : ABRAZO;
   const poseOtro: PoseChico = separados ? { ...CHICO_PARADO, paso: desde < 0.9 ? Math.sin(desde * 18) : 0 } : t < 20 ? CHICO_PARADO : besando ? BESO_EL : ABRAZO_EL;
 
-  const elVisible = fase === 'decide' || fase === 'parando' || fase === 'visto' || (fase === 'fin' && plan.entra);
+  const elVisible = fase === 'decide' || fase === 'parando' || fase === 'visto' || (fase === 'fin' && plan.entra && t >= plan.en);
   const listaVisto = ROSTROS_VISTO[Math.max(0, Math.min(5, etapa))];
   const caraEl =
     fase === 'decide'
@@ -170,10 +179,13 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
         : listaVisto[Math.min(listaVisto.length - 1, Math.floor(desde / 1.4))];
 
   const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
-  const mecer = separados || fase === 'decide' ? 0 : [3.4, 3, 2.6, 2.2][fase4];
+  const ritmo: Ritmo = call?.ritmo ?? 'firme';
+  const mecer = separados || fase === 'decide' ? 0 : MECER[ritmo] * [1.25, 1.1, 1, 0.9][fase4];
   const corazones = separados || fase === 'decide' ? 0 : [0, 3, 6, 9][fase4];
   const oscuro = 0.06 + t * 0.0034;
-  const bpm = Math.round(76 + t * 0.7);
+  const bpm = Math.round(76 + t * 0.7 + (ritmo === 'rapido' ? 10 : ritmo === 'lento' ? -4 : 0));
+  const nivel = call ? nivelDe(call) : 1;
+  const colorTermo = t < 35 ? '#86c8ea' : t < 70 ? '#e88fb0' : '#e0457b';
 
   const texto =
     fase === 'pasos'
@@ -192,6 +204,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
   return (
     <div className={styles.momento} role="dialog" aria-label="El momento">
+      <div className={styles.momentoEscena}>
       <svg className={styles.svg} viewBox={`${x0} 0 ${ventana} ${ALTO}`} preserveAspectRatio="xMidYMid slice" role="img" aria-label={texto}>
         <Cuarto escena={escena} ancho={ancho} luz={luz} />
         {/* la puerta por la que puede entrar él */}
@@ -239,13 +252,21 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
       </svg>
 
       <p className={styles.lugarMomento}>🔒 {lugar}</p>
-      <div className={styles.intensidad} aria-label={`Intensidad ${Math.round(t)}`}>
-        <span className={styles.latido} style={{ animationDuration: `${(60 / bpm).toFixed(2)}s` }}>
+      {/* El termómetro de excitación: sube con el ritmo que eliges en el teléfono */}
+      <div className={styles.termo} role="meter" aria-label="Excitación" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(t)}>
+        <small className={styles.termoNivel}>{nivel}/8</small>
+        <div className={styles.termoTubo}>
+          <i style={{ height: `${t}%`, background: `linear-gradient(0deg, #86c8ea, ${colorTermo})` }} />
+          {[1, 2, 3, 4, 5, 6, 7].map((m) => (
+            <b key={m} style={{ bottom: `${(m / 8) * 100}%` }} />
+          ))}
+        </div>
+        <span className={styles.termoBulbo} style={{ background: colorTermo, animationDuration: `${(60 / bpm).toFixed(2)}s` }}>
           ♥
         </span>
-        <div className={styles.tubo}>
-          <i style={{ height: `${t}%` }} />
-        </div>
+        <small className={styles.termoRitmo} aria-label={`Ritmo: ${NOMBRE_RITMO[ritmo]}`}>
+          {SUBE_RITMO[ritmo]}
+        </small>
       </div>
       {fase === 'pasos' && <p className={styles.pasos}>👣 👣 👣</p>}
       <p key={texto} className={cn(styles.texto, fase === 'pasos' && styles.textoAlerta)}>
@@ -255,12 +276,20 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
         <div className={styles.decide}>
           <button type="button" className={styles.parar} onClick={parar} data-tour="parar">
             <span>✋</span>Parar
+            <small>lo escondes</small>
           </button>
           <button type="button" className={styles.seguir} onClick={seguir} data-tour="seguir">
             <span>💗</span>Seguir
+            <small>él los ve</small>
           </button>
         </div>
       )}
+      </div>
+
+      {/* El teléfono: su propio espacio, nada lo tapa */}
+      <div className={styles.momentoTelefono}>
+        <Llamada name={nombreEl} incrustada largo pausada={fase === 'decide' || fase === 'parando'} acelera={fase === 'visto' ? 2 : 1} onProgreso={alProgreso} onFinish={alColgar} />
+      </div>
     </div>
   );
 }

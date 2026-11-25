@@ -1,11 +1,16 @@
 'use client';
 
 import { memo, useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { Cuerpo, POSES, ROPA_BIKINI, ROPA_CASUAL } from '../mundo/Chica';
 import type { Pose } from '../mundo/Chica';
 import { CHICO_PARADO, CuerpoChico } from './Chico';
+import type { PoseChico } from './Chico';
 import { Cuarto } from './Cuarto';
+import { Bolita } from './Bolita';
+import type { BolitaDatos } from './Bolita';
+import { ELLA_ABRAZA, ELLA_ABRE, EL_ABRAZA, EL_ABRE, SEPARACION, T_ABRAZAR, T_ABRIR, T_DESPUES, T_MANTENER, T_SOLTAR, mezclaChico, mezclaPose, suave } from './abrazo';
+import type { Efecto } from './abrazo';
 import { ALTO, ORILLA, PISO, masCercano } from '@/features/a-sus-espaldas/lib/paseo/cuartos';
 import type { Destino } from '@/features/a-sus-espaldas/lib/paseo/cuartos';
 import type { Escena, Look } from '@/features/a-sus-espaldas/lib/mundo/datos';
@@ -16,6 +21,8 @@ import styles from './paseo.module.css';
 export const SE = 0.46;
 export const SC = 0.5;
 const VEL = 170;
+/** La bolita no sube más arriba de esto (para no quedar bajo la barra de arriba). */
+const MARGEN_BOLITA = 118;
 
 export interface Figura {
   id: string;
@@ -26,6 +33,8 @@ export interface Figura {
   /** 0 a 5 corazones; null para él */
   corazones: number | null;
   esEl?: boolean;
+  /** postura del cuerpo; sin ella, parado */
+  pose?: PoseChico;
 }
 
 export interface Burbuja {
@@ -95,7 +104,7 @@ const PersonaFig = memo(function PersonaFig({ fig, mira, cerca }: { fig: Figura;
       {cerca && <ellipse cx={fig.x} cy={PISO + 5} rx="40" ry="8" className={fig.esEl ? styles.anilloEl : styles.anillo} />}
       <g className={styles.respira} style={{ transformOrigin: `${fig.x}px ${PISO}px` }}>
         <g transform={poner(fig.x, mira, SC)}>
-          <CuerpoChico look={fig.look} g={fig.g} />
+          <CuerpoChico look={fig.look} g={fig.g} pose={fig.pose} />
         </g>
       </g>
       {fig.corazones !== null && <Corazones x={fig.x} y={top - 30} n={fig.corazones} />}
@@ -124,13 +133,44 @@ interface Props {
   entrada: 'izq' | 'der' | 'centro';
   bloqueado: boolean;
   burbuja: Burbuja | null;
+  /** la bolita de acciones de quien tienes cerca */
+  bolita?: BolitaDatos | null;
+  /** una animación que se pide desde afuera (el abrazo); cambia `n` para repetirla */
+  efecto?: Efecto | null;
+  /** avisa cuando ella ya soltó el abrazo y se puede volver a jugar */
+  onEfectoFin?: () => void;
   onCerca: (id: string | null) => void;
   onPuerta: (lado: 'izq' | 'der') => void;
 }
 
+type FaseAbrazo = 'ir' | 'abrir' | 'abrazar' | 'mantener' | 'soltar' | 'despues';
+
+interface Abrazando {
+  con: string;
+  fx: number;
+  meta: number;
+  lado: 1 | -1;
+  fase: FaseAbrazo;
+  t: number;
+  gestos: Efecto['gestos'];
+}
+
+/** Corazones que suben al abrazarse: desplazamiento, demora, tamaño y color. */
+const CORAZONES_SUBEN = [
+  { x: -26, d: 0, s: 1.3, c: '#e8507f' },
+  { x: -8, d: 0.12, s: 1, c: '#f28bb0' },
+  { x: 10, d: 0.25, s: 1.5, c: '#e8507f' },
+  { x: 26, d: 0.4, s: 1.1, c: '#f28bb0' },
+  { x: -18, d: 0.58, s: 1.2, c: '#f06a96' },
+  { x: 16, d: 0.75, s: 0.9, c: '#e8507f' },
+  { x: 0, d: 0.95, s: 1.6, c: '#f28bb0' },
+  { x: 30, d: 1.15, s: 1, c: '#e8507f' },
+  { x: -30, d: 1.3, s: 1.1, c: '#f06a96' },
+] as const;
+
 /** El cuarto de lado. Tocas o mantienes el dedo y ella camina hacia allá; la cámara la sigue. */
 export function Escenario(props: Props) {
-  const { clave, escena, ancho, luz, puertas, gente, ropa, ropaN, gestoElla, seguidor, entrada, bloqueado, burbuja } = props;
+  const { clave, escena, ancho, luz, puertas, gente, ropa, ropaN, gestoElla, seguidor, entrada, bloqueado, burbuja, bolita, efecto } = props;
   const caja = useRef<HTMLDivElement>(null);
   const [tam, setTam] = useState({ w: 390, h: 460 });
   const inicio = (): number => (entrada === 'izq' ? 70 : entrada === 'der' ? ancho - 70 : Math.round(ancho * 0.26));
@@ -143,6 +183,8 @@ export function Escenario(props: Props) {
   const [, setFrame] = useState(0);
   const vivo = useRef(props);
   vivo.current = props;
+  const abrazo = useRef<Abrazando | null>(null);
+  const [lluvia, setLluvia] = useState<{ n: number; x: number } | null>(null);
 
   // Al entrar a otro cuarto: aparece junto a la puerta por la que entró.
   useEffect(() => {
@@ -157,6 +199,26 @@ export function Escenario(props: Props) {
     setFrame((n) => n + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clave]);
+
+  // Un abrazo: ella camina hasta quedar junto a él, abre los brazos, lo abraza y lo suelta.
+  const nEfecto = efecto?.n ?? 0;
+  useEffect(() => {
+    const ef = vivo.current.efecto;
+    if (!ef || ef.tipo !== 'abrazo') return;
+    const fig = vivo.current.gente.find((g) => g.id === ef.con);
+    if (!fig) {
+      vivo.current.onEfectoFin?.();
+      return;
+    }
+    const p = pos.current;
+    const lado: 1 | -1 = fig.x >= p.x ? 1 : -1;
+    abrazo.current = { con: ef.con, fx: fig.x, meta: Math.max(14, Math.min(vivo.current.ancho - 14, fig.x - lado * SEPARACION)), lado, fase: 'ir', t: 0, gestos: ef.gestos };
+    objetivo.current = null;
+    dedo.current = null;
+    setLluvia(null);
+    setFrame((n) => n + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nEfecto]);
 
   // Cuando alguien acepta seguirte: sale de donde estaba parado, no de la puerta.
   const sigueNombre = seguidor?.nombre ?? null;
@@ -215,7 +277,46 @@ export function Escenario(props: Props) {
       const v = vivo.current;
       const p = pos.current;
       let cambio = false;
-      if (v.bloqueado) {
+      const h = abrazo.current;
+      if (h) {
+        cambio = true;
+        h.t += dt;
+        if (h.fase === 'ir') {
+          const d = h.meta - p.x;
+          if (Math.abs(d) < 2 || h.t > 4) {
+            p.x = h.meta;
+            p.camina = false;
+            p.dir = h.lado;
+            h.fase = 'abrir';
+            h.t = 0;
+          } else {
+            p.x += Math.sign(d) * Math.min(Math.abs(d), VEL * 1.2 * dt);
+            p.dir = d > 0 ? 1 : -1;
+            p.camina = true;
+            p.fase += dt * 9;
+          }
+        } else if (h.fase === 'abrir' && h.t >= T_ABRIR) {
+          h.fase = 'abrazar';
+          h.t = 0;
+          setLluvia({ n: Math.round(ahora), x: (p.x + h.fx) / 2 });
+        } else if (h.fase === 'abrazar' && h.t >= T_ABRAZAR) {
+          h.fase = 'mantener';
+          h.t = 0;
+        } else if (h.fase === 'mantener' && h.t >= T_MANTENER) {
+          h.fase = 'soltar';
+          h.t = 0;
+        } else if (h.fase === 'soltar' && h.t >= T_SOLTAR) {
+          h.fase = 'despues';
+          h.t = 0;
+          v.onEfectoFin?.();
+        } else if (h.fase === 'despues' && h.t >= T_DESPUES) {
+          abrazo.current = null;
+          setLluvia(null);
+        }
+      }
+      if (h) {
+        // Mientras abraza, nada más la mueve.
+      } else if (v.bloqueado) {
         objetivo.current = null;
         dedo.current = null;
       } else if (dedo.current && caja.current) {
@@ -226,8 +327,10 @@ export function Escenario(props: Props) {
         objetivo.current = p.x + tecla.current * 200;
       }
       const antesCamina = p.camina;
-      const obj = objetivo.current;
-      if (obj !== null) {
+      const obj = h ? null : objetivo.current;
+      if (h) {
+        /* el abrazo ya la movió */
+      } else if (obj !== null) {
         const meta = Math.max(14, Math.min(v.ancho - 14, obj));
         const d = meta - p.x;
         if (Math.abs(d) < 3) {
@@ -261,7 +364,7 @@ export function Escenario(props: Props) {
 
       // Puertas: llegar a la orilla caminando hacia ella.
       if (p.x > ORILLA + 24 && p.x < v.ancho - ORILLA - 24) enPuerta.current = false;
-      if (!v.bloqueado && !enPuerta.current && p.camina) {
+      if (!h && !v.bloqueado && !enPuerta.current && p.camina) {
         if (p.x <= ORILLA && p.dir < 0) {
           enPuerta.current = true;
           objetivo.current = null;
@@ -308,8 +411,59 @@ export function Escenario(props: Props) {
     dedo.current = null;
   };
 
-  const poseElla = p.camina ? (Math.floor(p.fase) % 2 === 0 ? PASO_A : PASO_B) : POSES[0];
+  let poseElla: Pose = p.camina ? (Math.floor(p.fase) % 2 === 0 ? PASO_A : PASO_B) : POSES[0];
   const sube = p.camina ? -Math.abs(Math.sin(p.fase * Math.PI)) * 3 : 0;
+  // Si lo está abrazando: su postura, la de él y su cara según lo que siente.
+  let poseAbrazado: PoseChico | undefined;
+  let gestoAbrazado: Gesto | undefined;
+  const h = abrazo.current;
+  if (h) {
+    switch (h.fase) {
+      case 'ir':
+        gestoAbrazado = h.gestos.antes;
+        break;
+      case 'abrir': {
+        const k = suave(h.t / T_ABRIR);
+        poseElla = mezclaPose(POSES[0], ELLA_ABRE, k);
+        poseAbrazado = mezclaChico(CHICO_PARADO, EL_ABRE, k);
+        gestoAbrazado = h.gestos.antes;
+        break;
+      }
+      case 'abrazar': {
+        const k = suave(h.t / T_ABRAZAR);
+        poseElla = mezclaPose(ELLA_ABRE, ELLA_ABRAZA, k);
+        poseAbrazado = mezclaChico(EL_ABRE, EL_ABRAZA, k);
+        gestoAbrazado = h.gestos.durante;
+        break;
+      }
+      case 'mantener':
+        poseElla = { ...ELLA_ABRAZA, inc: ELLA_ABRAZA.inc + Math.sin(h.t * 4.5) * 1.4 };
+        poseAbrazado = { ...EL_ABRAZA, inc: (EL_ABRAZA.inc ?? 0) + Math.sin(h.t * 4.5 + 0.7) * 1.2 };
+        gestoAbrazado = h.gestos.durante;
+        break;
+      case 'soltar': {
+        const k = suave(h.t / T_SOLTAR);
+        poseElla = mezclaPose(ELLA_ABRAZA, POSES[0], k);
+        poseAbrazado = mezclaChico(EL_ABRAZA, CHICO_PARADO, k);
+        gestoAbrazado = h.gestos.despues;
+        break;
+      }
+      case 'despues':
+        gestoAbrazado = h.gestos.despues;
+        break;
+    }
+  }
+  const figuras = h ? gente.map((g) => (g.id === h.con ? { ...g, g: gestoAbrazado ?? g.g, pose: poseAbrazado } : g)) : gente;
+
+  // La bolita de acciones va sobre la cabeza de quien está cerca.
+  const figCerca = cercaRef.current ? gente.find((g) => g.id === cercaRef.current) : undefined;
+  const bolitaPos =
+    bolita && figCerca && !bloqueado && !h
+      ? {
+          x: Math.max(34, Math.min(tam.w - 34, ((figCerca.x - camX) / vw) * tam.w)),
+          y: Math.max(MARGEN_BOLITA, ((PISO - 206 - 62) / ALTO) * tam.h),
+        }
+      : null;
   const quienHabla = burbuja ? (burbuja.id === 'ella' ? p.x : burbuja.id === 'sigue' ? p.fx : gente.find((g) => g.id === burbuja.id)?.x ?? p.x) : 0;
 
   return (
@@ -325,7 +479,7 @@ export function Escenario(props: Props) {
     >
       <svg className={styles.svg} viewBox={`${f1(camX)} 0 ${f1(vw)} ${ALTO}`} preserveAspectRatio="xMidYMid slice" role="img" aria-label="Tu lugar">
         <Cuarto escena={escena} ancho={ancho} luz={luz} puertas={puertas} />
-        {gente.map((g) => (
+        {figuras.map((g) => (
           <PersonaFig key={g.id} fig={g} mira={p.x < g.x ? -1 : 1} cerca={cercaRef.current === g.id} />
         ))}
         {seguidor && (
@@ -348,8 +502,18 @@ export function Escenario(props: Props) {
             ))}
           </g>
         )}
+        {lluvia && abrazo.current && (
+          <g key={lluvia.n} transform={`translate(${f1(lluvia.x)} ${PISO - 150})`}>
+            {CORAZONES_SUBEN.map((c, i) => (
+              <g key={i} transform={`translate(${c.x} 0)`}>
+                <path d={CORAZON} className={styles.abrazoSube} fill={c.c} style={{ animationDelay: `${c.d}s`, ['--s' as string]: c.s } as CSSProperties} />
+              </g>
+            ))}
+          </g>
+        )}
         {burbuja && <Globo key={burbuja.n} x={quienHabla} texto={burbuja.texto} min={camX} max={camX + vw} />}
       </svg>
+      {bolita && bolitaPos && <Bolita key={bolita.id} datos={bolita} x={bolitaPos.x} y={bolitaPos.y} w={tam.w} h={tam.h} />}
     </div>
   );
 }

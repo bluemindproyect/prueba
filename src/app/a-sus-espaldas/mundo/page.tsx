@@ -1,8 +1,6 @@
-import type { Metadata } from 'next';
-import Mundo from '@/features/a-sus-espaldas/components/mundo/Mundo';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'A Sus Espaldas · El mundo' };
-
-export default function Page() {
-  return <Mundo />;
+/** El mundo en 3D ya no existe: el paseo en 2D es la pantalla principal. */
+export default function Page(): never {
+  redirect('/a-sus-espaldas/paseo');
 }

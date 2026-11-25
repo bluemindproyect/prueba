@@ -6,6 +6,9 @@ import type { ReactNode } from 'react';
 import { Escenario } from './Escenario';
 import type { Burbuja, Figura } from './Escenario';
 import { Momento } from './Momento';
+import type { BolitaDatos } from './Bolita';
+import type { Efecto } from './abrazo';
+import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
 import { mostrarGuia, yaVista } from '../guia';
 import type { PasoGuia } from '../guia';
 import { ETAPAS, LOOK_EL, T, ZONAS } from '@/features/a-sus-espaldas/lib/mundo/datos';
@@ -41,6 +44,7 @@ import {
 } from '@/features/a-sus-espaldas/lib/mundo/motor';
 import type { Aviso, Estado, Limpieza } from '@/features/a-sus-espaldas/lib/mundo/motor';
 import { anchoDe, luzDe, posiciones, puertasDe } from '@/features/a-sus-espaldas/lib/paseo/cuartos';
+import { carasAbrazo } from '@/features/a-sus-espaldas/lib/paseo/abrazo';
 import { corazones, invitar, planear, puedeCerrar, seguidor, soltar, terminarMomento } from '@/features/a-sus-espaldas/lib/paseo/momento';
 import type { Final, Plan, Resultado } from '@/features/a-sus-espaldas/lib/paseo/momento';
 import { useGuardado } from '@/features/a-sus-espaldas/lib/paseo/use-guardado';
@@ -87,7 +91,7 @@ const GUIA_INICIO: readonly PasoGuia[] = [
   {
     el: '[data-tour="acciones"]',
     titulo: 'Qué puedes hacer',
-    texto: 'Platica, coquetea o invítalo a ir contigo. Si te sigue, llévalo a un lugar con 🔒 donde él no esté.',
+    texto: 'Aquí están las cosas sueltas: ir a otro lugar, esperar o limpiar rastros. Cuando llegues junto a alguien sale una bolita sobre su cabeza con lo que puedes hacerle.',
   },
   {
     el: '[data-tour="reloj"]',
@@ -107,11 +111,14 @@ interface Accion {
   id: string;
   ico: string;
   texto: string;
+  /** nombre corto para el botón de abajo */
+  corto: string;
   hacer: () => void;
   rosa?: boolean;
-  sola?: boolean;
   off?: boolean;
   tour?: string;
+  /** va en la bolita de la persona que tienes cerca, no abajo */
+  bolita?: boolean;
 }
 
 /** El momento que está pasando: con quién y lo que se decidió al cerrar la puerta. */
@@ -163,6 +170,12 @@ export default function Paseo() {
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [correo, setCorreo] = useState('');
   const [confirmarCiclo, setConfirmarCiclo] = useState(false);
+  const [efecto, setEfecto] = useState<Efecto | null>(null);
+  const efectoN = useRef(0);
+  /** mientras dura el abrazo no se puede hacer otra cosa */
+  const [abrazando, setAbrazando] = useState(false);
+  const [puedeFs, setPuedeFs] = useState(false);
+  const [fs, setFs] = useState(false);
 
   /** Aplica una jugada sobre el estado más reciente y devuelve cómo quedó. */
   const hacer = (f: (s: Estado) => Estado): Estado => {
@@ -199,6 +212,18 @@ export default function Paseo() {
       document.removeEventListener('visibilitychange', alVolver);
     };
   }, [listo, quieto, setE]);
+
+  // Pantalla completa del navegador, si el aparato la permite.
+  useEffect(() => {
+    setPuedeFs(typeof document !== 'undefined' && !!document.fullscreenEnabled);
+    const alCambiar = () => setFs(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', alCambiar);
+    return () => document.removeEventListener('fullscreenchange', alCambiar);
+  }, []);
+  const pantallaCompleta = () => {
+    if (document.fullscreenElement) void document.exitFullscreen?.();
+    else void document.documentElement.requestFullscreen?.().catch(() => undefined);
+  };
 
   // Los globos se van solos.
   useEffect(() => {
@@ -239,7 +264,7 @@ export default function Paseo() {
   const puedeCerrarAhora = puedeCerrar(e);
   const personaCerca = cerca && cerca !== 'el' ? (aqui.find(({ p }) => p.id === cerca) ?? null) : null;
   const juntoAEl = cerca === 'el' && aquiEl;
-  const bloqueado = mapa || menu || !!e.aviso || !!enCurso || !!resultado;
+  const bloqueado = mapa || menu || !!e.aviso || !!enCurso || !!resultado || abrazando;
 
   const gente: Figura[] = aqui.map(({ p }) => {
     const n = corazones(e, p);
@@ -331,9 +356,19 @@ export default function Paseo() {
     setDesde(null);
   };
 
+  /** Ser tierna con él: ella lo abraza (animación) y su cara muestra lo que siente. */
   const serTierna = () => {
+    const antes = eRef.current;
+    const c = carasAbrazo(antes.sospecha, antes.quiebre);
     const s = hacer(ternura);
-    decir('el', s.ultima.split(' (')[0]);
+    efectoN.current += 1;
+    setAbrazando(true);
+    setBurbuja(null);
+    setEfecto({ tipo: 'abrazo', con: 'el', n: efectoN.current, gestos: { antes: gesto(c.antes), durante: gesto(c.durante), despues: gesto(c.despues) } });
+    // Lo que dice sale cuando ya lo está abrazando.
+    window.setTimeout(() => decir('el', s.ultima.split(' (')[0]), 1300);
+    // Por si algo falla, el juego nunca se queda bloqueado.
+    window.setTimeout(() => setAbrazando(false), 9000);
   };
 
   const serFria = () => {
@@ -387,10 +422,10 @@ export default function Paseo() {
     guardado.registrar('cerrar', { con: p.id, lugar: s.lugar, entra: plan.entra, cerca: plan.cerca });
   };
 
-  const alTerminar = (final: Final, alcanzado: number) => {
+  const alTerminar = (final: Final, alcanzado: number, llamada?: CallResult) => {
     const m = enCurso;
     if (!m) return;
-    const r = terminarMomento(eRef.current, m.con, m.plan, final, alcanzado);
+    const r = terminarMomento(eRef.current, m.con, m.plan, final, alcanzado, Math.random, llamada);
     const s: Estado = { ...r.estado, ultimo: Date.now() };
     eRef.current = s;
     setE(s);
@@ -398,7 +433,7 @@ export default function Paseo() {
     setResultado(r);
     setRopa('normal');
     setDesde(null);
-    guardado.registrar('momento', { con: m.con.id, final, alcanzado: Math.round(alcanzado), ganado: r.ganado, lugar: s.lugar });
+    guardado.registrar('momento', { con: m.con.id, final, alcanzado: Math.round(alcanzado), ganado: r.ganado, lugar: s.lugar, segundos: llamada?.seconds ?? 0 });
     guardado.guardarYa(s);
   };
 
@@ -433,33 +468,62 @@ export default function Paseo() {
 
   const acciones: Accion[] = [];
   if (puedeCerrarAhora && sigue) {
-    acciones.push({ id: 'cerrar', ico: '🔒', texto: `Cerrar la puerta con ${sigue.nombre}`, hacer: cerrarPuerta, rosa: true, sola: true, tour: 'cerrar' });
+    acciones.push({ id: 'cerrar', ico: '🔒', texto: `Cerrar la puerta con ${sigue.nombre}`, corto: 'Cerrar puerta', hacer: cerrarPuerta, rosa: true, tour: 'cerrar' });
   }
   if (personaCerca) {
     const p = personaCerca.p;
-    acciones.push({ id: 'platicar', ico: '💬', texto: 'Platicar', hacer: () => hablar(p, 'conversar') });
-    acciones.push({ id: 'indirecta', ico: '😏', texto: 'Lanzar una indirecta', hacer: () => hablar(p, 'indirecta') });
-    acciones.push({ id: 'lucirte', ico: '💃', texto: 'Lucirte', hacer: () => hablar(p, 'mostrarte') });
-    if (sigue) acciones.push({ id: 'ocupada', ico: '💗', texto: `Ya te sigue ${sigue.nombre}`, hacer: () => undefined, off: true });
-    else acciones.push({ id: 'invitar', ico: '💗', texto: `Invitar a ${p.nombre}`, hacer: () => invitarA(p), rosa: true });
+    acciones.push({ id: 'platicar', ico: '💬', texto: 'Platicar', corto: 'Platicar', hacer: () => hablar(p, 'conversar'), bolita: true });
+    acciones.push({ id: 'indirecta', ico: '😏', texto: 'Lanzar una indirecta', corto: 'Indirecta', hacer: () => hablar(p, 'indirecta'), bolita: true });
+    acciones.push({ id: 'lucirte', ico: '💃', texto: 'Lucirte', corto: 'Lucirte', hacer: () => hablar(p, 'mostrarte'), bolita: true });
+    if (sigue) acciones.push({ id: 'ocupada', ico: '💗', texto: `Ya te sigue ${sigue.nombre}`, corto: 'Ya te sigue', hacer: () => undefined, off: true, bolita: true });
+    else acciones.push({ id: 'invitar', ico: '💗', texto: `Invitar a ${p.nombre}`, corto: 'Invitar', hacer: () => invitarA(p), rosa: true, bolita: true });
   } else if (juntoAEl) {
-    acciones.push({ id: 'tierna', ico: '🤍', texto: 'Ser tierna con él', hacer: serTierna });
-    acciones.push({ id: 'fria', ico: '🧊', texto: 'Ser fría con él', hacer: serFria });
+    acciones.push({ id: 'tierna', ico: '🤍', texto: 'Ser tierna con él', corto: 'Ser tierna', hacer: serTierna, bolita: true });
+    acciones.push({ id: 'fria', ico: '🧊', texto: 'Ser fría con él', corto: 'Ser fría', hacer: serFria, bolita: true });
   } else {
     const r = e.rastros;
-    if (lugarAct.id === 'casa-habitacion' && r.sabanas) acciones.push({ id: 'sabanas', ico: '🧺', texto: 'Cambiar las sábanas', hacer: () => limpiarYa('sabanas') });
-    if ((lugarAct.escena === 'bano' || lugarAct.escena === 'vestidor') && r.olor > 5) acciones.push({ id: 'banar', ico: '🚿', texto: 'Bañarte', hacer: () => limpiarYa('banar') });
-    if (lugarAct.zona === 'casa' && r.ropa) acciones.push({ id: 'ropa-tirada', ico: '👕', texto: 'Esconder su ropa', hacer: () => limpiarYa('ropa') });
-    if (lugarAct.escena === 'sotano' && (r.sabanas || r.ropa)) acciones.push({ id: 'caja', ico: '📦', texto: 'Guardar todo en una caja', hacer: () => limpiarYa('esconder') });
+    if (lugarAct.id === 'casa-habitacion' && r.sabanas) acciones.push({ id: 'sabanas', ico: '🧺', texto: 'Cambiar las sábanas', corto: 'Sábanas', hacer: () => limpiarYa('sabanas') });
+    if ((lugarAct.escena === 'bano' || lugarAct.escena === 'vestidor') && r.olor > 5) acciones.push({ id: 'banar', ico: '🚿', texto: 'Bañarte', corto: 'Bañarte', hacer: () => limpiarYa('banar') });
+    if (lugarAct.zona === 'casa' && r.ropa) acciones.push({ id: 'ropa-tirada', ico: '👕', texto: 'Esconder su ropa', corto: 'Su ropa', hacer: () => limpiarYa('ropa') });
+    if (lugarAct.escena === 'sotano' && (r.sabanas || r.ropa)) acciones.push({ id: 'caja', ico: '📦', texto: 'Guardar todo en una caja', corto: 'Caja', hacer: () => limpiarYa('esconder') });
     if (ESCENAS_ROPA.has(lugarAct.escena) && lugarAct.privado && !sigue) {
-      acciones.push({ id: 'ropa', ico: ropa === 'bikini' ? '👗' : '👙', texto: ropa === 'bikini' ? 'Vestirte' : 'Ponerte el bikini', hacer: cambiarRopa });
+      acciones.push({ id: 'ropa', ico: ropa === 'bikini' ? '👗' : '👙', texto: ropa === 'bikini' ? 'Vestirte' : 'Ponerte el bikini', corto: ropa === 'bikini' ? 'Vestirte' : 'Bikini', hacer: cambiarRopa });
     }
   }
-  if (sigue && !personaCerca) acciones.push({ id: 'soltar', ico: '👋', texto: `Que ${sigue.nombre} se vaya`, hacer: despedir });
+  if (sigue && !personaCerca) acciones.push({ id: 'soltar', ico: '👋', texto: `Que ${sigue.nombre} se vaya`, corto: 'Despedir', hacer: despedir });
   if (!personaCerca && !juntoAEl) {
-    acciones.push({ id: 'mapa', ico: '🗺', texto: 'Ir a otro lugar', hacer: () => setMapa(true) });
-    acciones.push({ id: 'esperar', ico: '⏳', texto: 'Esperar 15 min', hacer: () => hacer((s) => avanzar(s, 15)) });
+    acciones.push({ id: 'mapa', ico: '🗺', texto: 'Ir a otro lugar', corto: 'Mapa', hacer: () => setMapa(true) });
+    acciones.push({ id: 'esperar', ico: '⏳', texto: 'Esperar 15 min', corto: 'Esperar', hacer: () => hacer((s) => avanzar(s, 15)) });
   }
+
+  const enBolita = acciones.filter((a) => a.bolita);
+  const enDock = acciones.filter((a) => !a.bolita);
+  const bolita: BolitaDatos | null =
+    enBolita.length > 0 && cerca
+      ? { id: cerca, ico: juntoAEl ? '🤍' : '💗', titulo: juntoAEl ? e.nombre : (personaCerca?.p.nombre ?? ''), acciones: enBolita }
+      : null;
+
+  // La primera vez que sale una bolita, se explica cómo usarla.
+  const bolitaId = bolita?.id ?? null;
+  useEffect(() => {
+    if (!listo || !bolitaId || bloqueado || yaVista('paseo-bolita')) return;
+    const id = window.setTimeout(
+      () =>
+        mostrarGuia(
+          [
+            {
+              el: '[data-tour="bolita"]',
+              titulo: 'La bolita de acciones',
+              texto: 'Mantén apretada la bolita y se abren más. Sin soltar, arrastra hasta la que quieras y suéltala ahí para hacerla. También puedes tocarla una vez y luego tocar la opción.',
+              lado: 'bottom',
+            },
+          ],
+          { id: 'paseo-bolita' },
+        ),
+      600,
+    );
+    return () => window.clearTimeout(id);
+  }, [listo, bolitaId, bloqueado]);
 
   /* ---------- quién está cerca ---------- */
 
@@ -522,6 +586,11 @@ export default function Paseo() {
         <span className={styles.topChip} aria-label="Tu satisfacción">
           💗 <b>{Math.round(e.sat)}</b>
         </span>
+        {puedeFs && (
+          <button type="button" className={styles.menuBtn} onClick={pantallaCompleta} aria-label={fs ? 'Salir de pantalla completa' : 'Pantalla completa'}>
+            {fs ? '🡼' : '⛶'}
+          </button>
+        )}
         <button type="button" className={styles.menuBtn} onClick={() => setMenu(true)} aria-label="Menú" data-tour="menu">
           ☰
         </button>
@@ -542,11 +611,14 @@ export default function Paseo() {
         entrada={entrada}
         bloqueado={bloqueado}
         burbuja={burbuja}
+        bolita={bolita}
+        efecto={efecto}
+        onEfectoFin={() => setAbrazando(false)}
         onCerca={setCerca}
         onPuerta={alPuerta}
       />
 
-      <div className={styles.barra}>
+      <div className={styles.info}>
         <p key={e.ultima} className={styles.nota}>
           {e.ultima}
         </p>
@@ -556,24 +628,28 @@ export default function Paseo() {
             ?
           </button>
         </div>
-        <div className={styles.acciones} data-tour="acciones">
-          {acciones.map((a) => (
+      </div>
+
+      {enDock.length > 0 && (
+        <div className={styles.dock} data-tour="acciones">
+          {enDock.map((a) => (
             <button
               key={a.id}
               type="button"
-              className={cn(styles.accion, a.rosa && styles.accionRosa, a.sola && styles.accionSola)}
+              className={cn(styles.dockBtn, a.rosa && styles.dockRosa)}
               onClick={a.hacer}
               disabled={a.off || bloqueado}
+              aria-label={a.texto}
               data-tour={a.tour}
             >
-              <span className={styles.accionIco} aria-hidden>
+              <span className={styles.dockIco} aria-hidden>
                 {a.ico}
               </span>
-              {a.texto}
+              {a.corto}
             </button>
           ))}
         </div>
-      </div>
+      )}
 
       {/* Mapa: a dónde vas al salir a la calle */}
       {mapa && (
@@ -733,9 +809,6 @@ export default function Paseo() {
               </div>
             )}
 
-            <Link href="/a-sus-espaldas/mundo" className={styles.menuBtn2}>
-              El mundo (vista 3D)
-            </Link>
             <Link href="/a-sus-espaldas" className={styles.menuBtn2}>
               La llamada (por turnos)
             </Link>

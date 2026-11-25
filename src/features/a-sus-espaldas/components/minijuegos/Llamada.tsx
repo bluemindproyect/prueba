@@ -23,6 +23,16 @@ interface LlamadaProps {
   /** cómo se llama él */
   name: string;
   onFinish: (result: CallResult) => void;
+  /** dentro del paseo: el teléfono se acomoda en su propio espacio en vez de tapar la pantalla */
+  incrustada?: boolean;
+  /** llamada larga (hasta 10 minutos); el ritmo que eliges decide cuánto tarda */
+  largo?: boolean;
+  /** el tiempo se detiene (por ejemplo, mientras él abre la puerta) */
+  pausada?: boolean;
+  /** qué tan rápido pasa el tiempo (1 normal, 2 al doble) */
+  acelera?: number;
+  /** avisa cada vez que cambia algo en la llamada */
+  onProgreso?: (s: Call2) => void;
 }
 
 const RITMOS: ReadonlyArray<{ id: Ritmo; label: string }> = [
@@ -48,12 +58,18 @@ const ANIMO_LABEL = {
 
 const fill = (text: string, name: string): string => text.replace(/\{n\}/g, name);
 
-export function Llamada({ name, onFinish }: LlamadaProps) {
-  const [s, setS] = useState<Call2>(() => startCall2());
+export function Llamada({ name, onFinish, incrustada = false, largo = false, pausada = false, acelera = 1, onProgreso }: LlamadaProps) {
+  const [s, setS] = useState<Call2>(() => startCall2(Math.random, { largo }));
   const sRef = useRef(s);
   const logEnd = useRef<HTMLDivElement>(null);
   const finishRef = useRef(onFinish);
   finishRef.current = onFinish;
+  const progresoRef = useRef(onProgreso);
+  progresoRef.current = onProgreso;
+  const quietoRef = useRef(pausada);
+  quietoRef.current = pausada;
+  const aceleraRef = useRef(acelera);
+  aceleraRef.current = acelera;
 
   const apply = (f: (prev: Call2) => Call2) => {
     sRef.current = f(sRef.current);
@@ -63,10 +79,14 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
   // El tiempo: cada décima de segundo sube la excitación y avanza la conversación.
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (!document.hidden) apply((prev) => tick2(prev, 0.1));
+      if (!document.hidden && !quietoRef.current) apply((prev) => tick2(prev, 0.1 * aceleraRef.current));
     }, 100);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    progresoRef.current?.(s);
+  }, [s]);
 
   useEffect(() => {
     if (s.fase !== 'fin') return;
@@ -75,7 +95,9 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
   }, [s.fase]);
 
   useEffect(() => {
-    logEnd.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    // Solo se mueve la lista de mensajes, no toda la página.
+    const caja = logEnd.current?.parentElement;
+    if (caja) caja.scrollTo({ top: caja.scrollHeight, behavior: 'smooth' });
   }, [s.log.length]);
 
   const nivel = nivelDe(s);
@@ -89,8 +111,8 @@ export function Llamada({ name, onFinish }: LlamadaProps) {
   const ring = heat < 25 ? '#6fd3a0' : heat < 50 ? '#f0b24a' : heat < 75 ? '#ef7b6a' : '#e0457b';
 
   return (
-    <div className={styles.overlay} role="dialog" aria-label="Llamada">
-      <p className={styles.gameTag}>Minijuego · La llamada</p>
+    <div className={incrustada ? styles.panel : styles.overlay} role="dialog" aria-label="Llamada">
+      {!incrustada && <p className={styles.gameTag}>Minijuego · La llamada</p>}
       <div className={cn(styles.device, rapido && styles.shake)}>
         <span className={styles.notch} aria-hidden="true" />
         <div className={styles.phone}>
