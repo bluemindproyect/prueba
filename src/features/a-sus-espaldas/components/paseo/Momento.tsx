@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Cuerpo, POSES, ROPA_BIKINI } from '../mundo/Chica';
+import { Cuerpo, POSES, ROPA_BIKINI, PIEL, PIEL_SOMBRA } from '../mundo/Chica';
 import type { Pose } from '../mundo/Chica';
 import { CHICO_PARADO, CuerpoChico } from './Chico';
 import type { PoseChico } from './Chico';
@@ -17,15 +17,18 @@ import { gestoPorId } from '@/features/a-sus-espaldas/lib/mundo/gestos';
 import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
 import { ALTO, PISO, esconditeDe } from '@/features/a-sus-espaldas/lib/paseo/cuartos';
 import type { Final, Plan } from '@/features/a-sus-espaldas/lib/paseo/momento';
+import { climaxDe, lineaDe, ropaDe } from '@/features/a-sus-espaldas/lib/paseo/escenas';
+import type { Tramo } from '@/features/a-sus-espaldas/lib/paseo/escenas';
 import { cn } from '@/lib/cn';
 import styles from './paseo.module.css';
 
 
 /**
- * El momento a solas: abrazados y con ropa (ella en bikini), se mecen y se besan. Mientras
- * tanto él llama por teléfono (la llamada está incrustada abajo o al lado, sin tapar la escena).
- * El ritmo que eliges en el teléfono manda: sube el termómetro de excitación, la escena se mece
- * más rápido y cambian las caras. Puede durar hasta 10 minutos reales. Si él llega, tú decides.
+ * El momento a solas: se desnudan poco a poco, se mecen y se besan, y lo que se lee sube con
+ * la excitación. Mientras tanto él llama por teléfono (la llamada está incrustada abajo o al
+ * lado, sin tapar la escena). El ritmo que eliges en el teléfono manda: sube el termómetro,
+ * la escena se mece más rápido, cambian las caras y cambia lo que pasa. Puede durar hasta 10
+ * minutos reales. Si él llega, tú decides.
  */
 
 type Fase = 'sube' | 'pasos' | 'decide' | 'parando' | 'visto' | 'fin';
@@ -39,6 +42,11 @@ const COMO_SI_NADA: Pose = POSES.find((p) => p.id === 'hombros') ?? POSES[0];
 // Él está volteado hacia ella: su brazo «der» es el que la abraza.
 const ABRAZO_EL: PoseChico = { izq: [10, 24], der: [56, 100], cab: -9, inc: -4 };
 const BESO_EL: PoseChico = { izq: [10, 24], der: [56, 100], cab: -15, inc: -6 };
+
+// Se desnudan con la excitación: primero el top, después todo. El «desnudo» es del color de
+// la piel, con la sombra del bikini como guía para que se lea el cuerpo.
+const ROPA_TOP_FUERA = { ...ROPA_BIKINI, vestido: PIEL, sombra: PIEL_SOMBRA };
+const ROPA_DESNUDA = { ...ROPA_TOP_FUERA, short: PIEL };
 
 const ROSTROS_VISTO: readonly (readonly string[])[] = [
   ['confundido', 'vidrioso', 'lloriqueo', 'llanto'],
@@ -80,6 +88,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const callRef = useRef<Call2 | null>(null);
   const [fase, setFase] = useState<Fase>('sube');
   const [desde, setDesde] = useState(0); // segundos desde que cambió la fase
+  const [linea, setLinea] = useState('Cierras la puerta.');
   const t = intensidadDe(call);
   const tRef = useRef(0);
   tRef.current = t;
@@ -187,6 +196,24 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const nivel = call ? nivelDe(call) : 1;
   const colorTermo = t < 35 ? '#86c8ea' : t < 70 ? '#e88fb0' : '#e0457b';
 
+  // Cuánta ropa queda y qué se lee: sube con el termómetro y cambia con el ritmo.
+  const tramo: Tramo = fase4 === 3 ? 3 : fase4 === 2 ? 2 : fase4 === 1 ? 1 : 0;
+  const ropa = ropaDe(tramo);
+  const ropaElla = ropa === 'bikini' ? ROPA_BIKINI : ropa === 'topFuera' ? ROPA_TOP_FUERA : ROPA_DESNUDA;
+  const lookOtro = ropa === 'bikini' ? otro.look : { ...otro.look, ropa: otro.look.piel };
+
+  // La frase cambia sola cada ~5 s mientras la escena sigue; al final se queda una.
+  useEffect(() => {
+    if (fase === 'pasos' || fase === 'decide' || fase === 'parando') return;
+    if (fase === 'fin') {
+      setLinea(climaxDe());
+      return;
+    }
+    setLinea((l) => lineaDe(tramo, ritmo, Math.random, l));
+    const id = window.setInterval(() => setLinea((l) => lineaDe(tramo, ritmo, Math.random, l)), 5200);
+    return () => window.clearInterval(id);
+  }, [tramo, ritmo, fase]);
+
   const texto =
     fase === 'pasos'
       ? 'Se oyen pasos…'
@@ -198,9 +225,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             : 'Rápido…'
           : fase === 'visto'
             ? 'No se detienen.'
-            : fase === 'fin'
-              ? 'Se quedan abrazados.'
-              : ['Cierras la puerta.', 'Se abrazan.', 'Un beso.', 'Se olvidan de todo.'][fase4];
+            : linea;
 
   return (
     <div className={styles.momento} role="dialog" aria-label="El momento">
@@ -232,11 +257,11 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
         <g className={mecer ? styles.mecer : undefined} style={{ transformOrigin: `${centro}px ${PISO}px`, animationDuration: `${mecer || 3}s` }}>
           <g style={{ opacity: otroOculto ? 0 : 1, transition: 'opacity 0.35s' }}>
             <g transform={poner(otroX, separados ? 1 : -1, SC)}>
-              <CuerpoChico look={otro.look} g={g(caraOtro)} pose={poseOtro} />
+              <CuerpoChico look={lookOtro} g={g(caraOtro)} pose={poseOtro} />
             </g>
           </g>
           <g transform={poner(ellaX, 1, SE)}>
-            <Cuerpo g={g(caraElla)} ropa={ROPA_BIKINI} pose={poseElla} />
+            <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} />
           </g>
         </g>
         {Array.from({ length: corazones }, (_, i) => (
@@ -269,7 +294,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
         </small>
       </div>
       {fase === 'pasos' && <p className={styles.pasos}>👣 👣 👣</p>}
-      <p key={texto} className={cn(styles.texto, fase === 'pasos' && styles.textoAlerta)}>
+      <p key={texto} className={cn(styles.texto, fase === 'pasos' && styles.textoAlerta)} aria-live="polite">
         {texto}
       </p>
       {fase === 'decide' && (
