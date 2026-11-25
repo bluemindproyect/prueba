@@ -9,7 +9,10 @@ import { Cuarto } from './Cuarto';
 import { SC, SE, poner } from './Escenario';
 import { Llamada } from '../minijuegos/Llamada';
 import { Mamada } from '../minijuegos/Mamada';
-import { CARA_DE, SEPARACION as SEP_MAMADA, Y_RODILLAS, posesDe as posesMamada, profundidadDe, vaiven as vaivenMamada } from './blowjob';
+import { Bolita } from './Bolita';
+import type { BolitaAccion, BolitaDatos } from './Bolita';
+import type { Profundidad } from './blowjob';
+import { CARA_DE, SEPARACION as SEP_MAMADA, Y_RODILLAS, posesDe as posesMamada, vaiven as vaivenMamada } from './blowjob';
 import { zoomDe } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
 import type { Mamada as EstadoMamada } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
 import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
@@ -79,6 +82,8 @@ const lerp = (a: number, b: number, k: number): number => a + (b - a) * Math.max
 const MECER: Record<Ritmo, number> = { lento: 3.6, firme: 2.6, rapido: 1.7 };
 /** Velocidad del empuje de perrito, en radianes por segundo. */
 const EMPUJE: Record<Ritmo, number> = { lento: 4.4, firme: 6.6, rapido: 9.4 };
+const PROFUNDIDADES: readonly Profundidad[] = ['suave', 'honda', 'garganta'];
+const RITMOS: readonly Ritmo[] = ['lento', 'firme', 'rapido'];
 const SUBE_RITMO: Record<Ritmo, string> = { lento: '›', firme: '››', rapido: '›››' };
 const NOMBRE_RITMO: Record<Ritmo, string> = { lento: 'Despacio', firme: 'Firme', rapido: 'Rápido' };
 
@@ -111,6 +116,21 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const aguanteMax = useRef(20);
   const [mama, setMama] = useState<EstadoMamada | null>(null);
   const [yaMamo, setYaMamo] = useState(false);
+  // Lo que tú controlas mientras la mamas: qué tan hondo y a qué ritmo.
+  const [hondo, setHondo] = useState(0);
+  const [ritmoM, setRitmoM] = useState<Ritmo>('firme');
+  // Tamaño de la pantalla de la escena, para colocar la bolita de opciones.
+  const escenaRef = useRef<HTMLDivElement>(null);
+  const [caja, setCaja] = useState({ w: 360, h: 640 });
+  useEffect(() => {
+    const el = escenaRef.current;
+    if (!el) return;
+    const medir = () => setCaja({ w: el.clientWidth || 360, h: el.clientHeight || 640 });
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const [usados, setUsados] = useState<GestoElla[]>([]);
   const [empuje, setEmpuje] = useState<{ tipo: GestoElla | 'altavoz'; n: number } | null>(null);
   const t = intensidadDe(call);
@@ -189,6 +209,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   /** Se agacha y lo mama: el teléfono se pausa y entra el minijuego. */
   const empezarMamada = () => {
     setMama(null);
+    setHondo(0);
+    setRitmoM(callRef.current?.ritmo ?? 'firme');
     ir('mamada');
     navigator.vibrate?.(20);
   };
@@ -215,8 +237,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const puertaX = centro - 216;
 
   const separados = fase === 'parando';
-  const profMamada = profundidadDe(t);
-  const vMamada = vaivenMamada(desde, call?.ritmo ?? 'firme');
+  const profMamada: Profundidad = PROFUNDIDADES[hondo];
+  const vMamada = vaivenMamada(desde, ritmoM);
   const ritmo: Ritmo = call?.ritmo ?? 'firme';
   // Pasado el punto medio se ponen de perrito, salvo cuando él entra o ella se aparta.
   const perrito = !separados && !mamando && fase !== 'decide' && t >= 62;
@@ -359,9 +381,26 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
               ? 'No se detienen.'
               : linea;
 
+  // La bolita de opciones: tú decides qué hacer y cómo.
+  const iRitmo = RITMOS.indexOf(ritmoM);
+  const accionesBolita: BolitaAccion[] = mamando
+    ? [
+        { id: 'hondo', ico: '⬇️', texto: 'Más hondo', rosa: true, off: hondo >= 2, hacer: () => setHondo((h) => Math.min(2, h + 1)) },
+        { id: 'suave', ico: '⬆️', texto: 'Menos hondo', off: hondo <= 0, hacer: () => setHondo((h) => Math.max(0, h - 1)) },
+        { id: 'rapido', ico: '⏩', texto: 'Más rápido', rosa: true, off: iRitmo >= 2, hacer: () => setRitmoM(RITMOS[Math.min(2, iRitmo + 1)]) },
+        { id: 'lento', ico: '⏪', texto: 'Más despacio', off: iRitmo <= 0, hacer: () => setRitmoM(RITMOS[Math.max(0, iRitmo - 1)]) },
+        { id: 'parar', ico: '🧍', texto: 'Pararte', hacer: terminarMamada },
+      ]
+    : [
+        { id: 'mamar', ico: '💋', texto: yaMamo ? 'Agacharte otra vez' : 'Agacharte', rosa: true, off: tramo < 1, hacer: empezarMamada },
+        { id: 'altavoz', ico: '🔊', texto: 'Ponerlo en altavoz', off: !call || call.altavoz, hacer: ponerAltavoz },
+      ];
+  const bolita: BolitaDatos | null =
+    fase === 'sube' || mamando ? { id: mamando ? 'mamada' : 'momento', ico: mamando ? '💋' : '💗', titulo: nombreEl, acciones: accionesBolita } : null;
+
   return (
     <div className={styles.momento} role="dialog" aria-label="El momento">
-      <div className={styles.momentoEscena}>
+      <div className={styles.momentoEscena} ref={escenaRef}>
       <svg className={styles.svg} viewBox={`${x0} 0 ${ventana} ${ALTO}`} preserveAspectRatio="xMidYMid slice" role="img" aria-label={texto}>
         <Cuarto escena={escena} ancho={ancho} luz={luz} />
         {/* la luz fría del teléfono cuando lo pones en altavoz */}
@@ -500,16 +539,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
       </svg>
 
       <p className={styles.lugarMomento}>🔒 {lugar}</p>
-      {call && !call.altavoz && fase !== 'fin' && (
-        <button type="button" className={styles.altavoz} onClick={ponerAltavoz}>
-          🔊 Ponerlo en altavoz
-        </button>
-      )}
-      {fase === 'sube' && tramo >= 1 && !yaMamo && (
-        <button type="button" className={styles.mamar} onClick={empezarMamada} data-tour="mamar">
-          💋 Agacharte
-        </button>
-      )}
+      {bolita && <Bolita datos={bolita} x={44} y={Math.round(caja.h * 0.5)} w={caja.w} h={caja.h} />}
       {/* El termómetro de excitación: sube con el ritmo que eliges en el teléfono */}
       <div className={styles.termo} role="meter" aria-label="Excitación" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(t)}>
         <small className={styles.termoNivel}>{nivel}/8</small>
