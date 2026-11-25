@@ -1,13 +1,8 @@
-import { SEDUCE } from '../mundo/datos';
-import type { Persona } from '../mundo/datos';
-import { avanzar, chanceDeSi, elAqui, elCerca, etapaDe, fmt, lugarPorId, personas, tramoEl } from '../mundo/motor';
-import type { Estado } from '../mundo/motor';
-import type { CallResult } from '../minijuegos/llamada';
-
-/**
- * El paseo: invitar a alguien para que te siga y el momento a solas, con la puerta cerrada.
- * Todo se da a entender. Lógica pura sobre el `Estado` del mundo, sin React.
- */
+import { SEDUCE } from '../../lib/mundo/datos';
+import type { Persona } from '../../lib/mundo/datos';
+import { avanzar, chanceDeSi, elAqui, elCerca, etapaDe, fmt, lugarPorId, personas, tramoEl } from '../../lib/mundo/motor';
+import type { Estado } from '../../lib/mundo/motor';
+import type { CallResult } from '../../lib/minijuegos/llamada';
 
 export type Rng = () => number;
 
