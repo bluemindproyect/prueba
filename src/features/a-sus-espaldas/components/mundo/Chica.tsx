@@ -63,6 +63,7 @@ export const POSES: readonly Pose[] = [
   { id: 'rendida', nombre: 'Rendida', di: 40, fi: 25, dd: 40, fd: 25, inc: 9, cab: 18, cara: 'entregadaella', sep: 15, rod: 8, baja: 18 },
   { id: 'estira', nombre: 'Estirándose', di: 140, fi: 176, dd: 140, fd: 176, inc: 0, cab: -4, cara: 'alivio', sep: 10 },
   { id: 'victoria', nombre: 'Victoria', di: 140, fi: 160, dd: 140, fd: 160, inc: 0, cab: 0, cara: 'victoria' },
+  { id: 'caminando', nombre: 'Caminando con las piernas abiertas', di: 15, fi: 11, dd: 15, fd: 11, inc: 1.5, cab: 5, cara: 'agotada', sep: 14, rod: 7, baja: 5 },
 ];
 
 export const PIEL = '#f4cfb0';
@@ -74,6 +75,9 @@ const BOCA = '#b8605a';
 
 /** Desnuda: sin ropa, con pecho y pubis dibujados. */
 export const ROPA_DESNUDA: Ropa = { tipo: 'desnuda', vestido: PIEL, sombra: PIEL_SOMBRA, short: PIEL, zapatos: '#f4efe6' };
+
+/** Silueta de seno en coordenadas locales (centrada en 0,0) para poder escalarla. */
+const SENO = 'M-8.5 -13 Q1.5 -15 10.5 -7 Q10.5 7 3.5 13 Q-5.5 15 -10.5 5 Q-13.5 -5 -8.5 -13 Z';
 
 const f = (n: number): string => n.toFixed(1);
 
@@ -155,13 +159,39 @@ export function CaritaElla({ g, size = 96, ropa = ROPA_CASUAL }: { g: Gesto; siz
   );
 }
 
-/** Cuerpo completo; `pose` cambia brazos e inclinación. */
-export function Chica({ g, size = 220, ropa, pose = POSES[0], mojada = false }: { g: Gesto; size?: number; ropa?: Ropa; pose?: Pose; mojada?: boolean }) {
+/**
+ * Cuerpo completo; `pose` cambia brazos e inclinación.
+ * `despeinada` = pelo revuelto y labial corrido (después del sexo).
+ * `caminando` = piernas abiertas, rodillas hacia afuera y paso inseguro.
+ * `pecho` = multiplicador del tamaño del busto (1 = normal).
+ * `hinchada` = vulva inflamada, pata de camello marcada.
+ */
+export function Chica({
+  g,
+  size = 220,
+  ropa,
+  pose = POSES[0],
+  mojada = false,
+  despeinada = false,
+  caminando = false,
+  pecho = 1,
+  hinchada = false,
+}: {
+  g: Gesto;
+  size?: number;
+  ropa?: Ropa;
+  pose?: Pose;
+  mojada?: boolean;
+  despeinada?: boolean;
+  caminando?: boolean;
+  pecho?: number;
+  hinchada?: boolean;
+}) {
   const r = ropa ?? (pose.sep !== undefined ? ROPA_ESCENA : ROPA_CASUAL);
   return (
     <svg viewBox="22 18 196 440" width={size} height={size * (440 / 196)} role="img" aria-label={`${pose.nombre}: ${g.nombre}`}>
       <ellipse cx="120" cy="443" rx="50" ry="6" fill="#000" fillOpacity="0.13" />
-      <Cuerpo g={g} ropa={r} pose={pose} mojada={mojada} />
+      <Cuerpo g={g} ropa={r} pose={pose} mojada={mojada} despeinada={despeinada} caminando={caminando} pecho={pecho} hinchada={hinchada} />
     </svg>
   );
 }
@@ -187,12 +217,30 @@ function Brazo({ s, a1, a2 }: { s: 1 | -1; a1: number; a2: number }) {
   );
 }
 
-export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
+export function Cuerpo({
+  g,
+  ropa,
+  pose,
+  mojada = false,
+  despeinada = false,
+  caminando = false,
+  pecho = 1,
+  hinchada = false,
+}: {
+  g: Gesto;
+  ropa: Ropa;
+  pose: Pose;
+  mojada?: boolean;
+  despeinada?: boolean;
+  caminando?: boolean;
+  pecho?: number;
+  hinchada?: boolean;
+}) {
   const pelo = mojada ? '#1b1220' : PELO;
   const cabeza = `rotate(${pose.cab} 120 136) translate(120 136) scale(1 0.84) translate(-120 -136)`;
-  const sep = (pose.sep ?? 0) * 0.5;
-  const rod = pose.rod ?? 0;
-  const b = pose.baja ?? 0;
+  const sep = (pose.sep ?? 0) * 0.5 + (caminando ? 6 : 0);
+  const rod = (pose.rod ?? 0) + (caminando ? 7 : 0);
+  const b = (pose.baja ?? 0) + (caminando ? 6 : 0);
   const sudor = g.extras.includes('sudor');
   const bikini = ropa.tipo === 'bikini';
   const desnuda = ropa.tipo === 'desnuda';
@@ -228,6 +276,19 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
       {/* pelo largo detrás */}
       <g transform={cabeza}>
         <path d="M86 84 C80 40 100 28 122 28 C146 28 164 46 158 86 C162 126 170 170 160 214 L148 210 C150 170 146 130 146 104 L94 104 C94 130 90 170 92 210 L80 214 C72 170 82 126 86 84 Z" fill={pelo} />
+        {despeinada && (
+          <g fill={pelo}>
+            {/* mechones parados y pelo revuelto */}
+            <path d="M92 62 C84 52 82 40 88 30 C90 40 95 48 100 54 Z" />
+            <path d="M150 64 C158 52 161 40 155 30 C152 41 147 50 143 56 Z" />
+            <path d="M104 40 C98 30 92 24 85 22 C91 30 94 37 97 44 Z" />
+            <path d="M138 42 C146 32 153 27 160 27 C153 34 148 41 145 48 Z" />
+            <path d="M160 96 C168 116 172 146 168 176 C166 158 162 132 156 112 Z" />
+            <path d="M80 96 C72 118 70 148 74 178 C76 158 80 132 86 112 Z" />
+            <path d="M150 190 C158 200 162 210 160 220 C156 210 151 202 145 196 Z" />
+            <path d="M90 192 C82 202 78 212 80 222 C84 212 89 204 95 198 Z" />
+          </g>
+        )}
       </g>
       {/* hombros y pecho (piel) */}
       <path d={"M100 152 Q120 144 140 152 C145 166 145 184 142 196 C138 207 135 216 135 226 C135 240 146 254 153 270 L87 270 C96 254 105 240 105 226 C105 216 102 207 98 196 C95 184 95 166 100 152 Z"} fill={PIEL} />
@@ -239,16 +300,42 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
       </g>
       {desnuda ? (
         <g stroke={TINTA} strokeOpacity="0.18" strokeWidth="0.7">
-          {/* pecho desnudo */}
-          <path d="M100 177 Q110 175 119 183 Q119 197 112 203 Q103 205 98 195 Q95 185 100 177 Z" fill={PIEL} />
-          <path d="M140 177 Q130 175 121 183 Q121 197 128 203 Q137 205 142 195 Q145 185 140 177 Z" fill={PIEL} />
-          <circle cx="107" cy="190" r="4.6" fill={PIEL_SOMBRA} fillOpacity="0.55" stroke="none" />
-          <circle cx="133" cy="190" r="4.6" fill={PIEL_SOMBRA} fillOpacity="0.55" stroke="none" />
-          <circle cx="107" cy="190" r="1.7" fill="#b5715f" stroke="none" />
-          <circle cx="133" cy="190" r="1.7" fill="#b5715f" stroke="none" />
-          {/* pubis */}
-          <path d="M113 268 Q120 273 127 268 Q126 281 120 288 Q114 281 113 268 Z" fill={PIEL_SOMBRA} fillOpacity="0.5" stroke="none" />
-          <path d="M120 277 L120 289" stroke={PIEL_SOMBRA} strokeWidth="1.4" strokeLinecap="round" fill="none" />
+          {/* pecho desnudo (escala con `pecho`) */}
+          {([-1, 1] as const).map((s) => {
+            const cx = 120 + s * 12.5;
+            const cy = 186 + (pecho - 1) * 7;
+            const nx = cx - s * 1.6 * pecho;
+            return (
+              <g key={s}>
+                <path d={SENO} fill={PIEL} transform={`translate(${f(cx)} ${f(cy)}) scale(${f(s * pecho)} ${f(pecho)})`} />
+                <path d={SENO} fill={PIEL_SOMBRA} fillOpacity="0.28" stroke="none" transform={`translate(${f(cx + s * 1.4)} ${f(cy + 1.6)}) scale(${f(s * pecho)} ${f(pecho)})`} />
+                <ellipse cx={f(nx)} cy={f(cy)} rx={f(4.6 * pecho)} ry={f(4.4 * pecho)} fill={PIEL_SOMBRA} fillOpacity="0.6" stroke="none" />
+                <ellipse cx={f(nx)} cy={f(cy)} rx={f(1.8 * pecho)} ry={f(1.7 * pecho)} fill="#b5715f" stroke="none" />
+                <path d={`M${f(cx - s * 6 * pecho)} ${f(cy - 6 * pecho)} Q${f(cx + s * 2 * pecho)} ${f(cy - 11 * pecho)} ${f(cx + s * 7 * pecho)} ${f(cy - 5 * pecho)}`} fill="none" stroke="#fff" strokeOpacity="0.25" strokeWidth="1.6" />
+                {pecho > 1.12 && (
+                  <path d={`M${f(cx - s * 8 * pecho)} ${f(cy + 9 * pecho)} Q${f(cx)} ${f(cy + 15 * pecho)} ${f(cx + s * 8 * pecho)} ${f(cy + 9 * pecho)}`} fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0.5" strokeWidth="1.4" />
+                )}
+              </g>
+            );
+          })}
+          {/* pubis: hinchado (pata de camello) o normal */}
+          {hinchada ? (
+            <g>
+              <path d="M107 262 Q120 257 133 262 Q137 275 130 285 Q125 292 120 296 Q115 292 110 285 Q103 275 107 262 Z" fill={PIEL_SOMBRA} fillOpacity="0.6" stroke="none" />
+              <path d="M113 264 Q111 276 116 286 Q118 291 120 295" fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0.75" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M127 264 Q129 276 124 286 Q122 291 120 295" fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0.75" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M120 266 L120 295" stroke="#b5715f" strokeOpacity="0.75" strokeWidth="1.7" strokeLinecap="round" fill="none" />
+              <path d="M112 266 Q113 279 118 287" fill="none" stroke="#fff" strokeOpacity="0.32" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M128 266 Q127 279 122 287" fill="none" stroke="#fff" strokeOpacity="0.24" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M112 260 Q120 255 128 260" fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0.55" strokeWidth="1.2" />
+              <path d="M108 273 Q106 282 110 290 M132 273 Q134 282 130 290" fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0.4" strokeWidth="1" strokeLinecap="round" />
+            </g>
+          ) : (
+            <g>
+              <path d="M113 268 Q120 273 127 268 Q126 281 120 288 Q114 281 113 268 Z" fill={PIEL_SOMBRA} fillOpacity="0.5" stroke="none" />
+              <path d="M120 277 L120 289" stroke={PIEL_SOMBRA} strokeWidth="1.4" strokeLinecap="round" fill="none" />
+            </g>
+          )}
         </g>
       ) : bikini ? (
         <g stroke={TINTA} strokeOpacity="0.3" strokeWidth="0.8">
@@ -329,6 +416,20 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
           </g>
         )}
         <Cara g={g} />
+        {despeinada && (
+          <g fill="none" stroke={pelo} strokeLinecap="round">
+            {/* mechones encima de la cara y labial corrido */}
+            <path d="M95 72 C104 86 107 100 103 118" strokeWidth="2.4" strokeOpacity="0.92" />
+            <path d="M143 76 C136 90 137 104 142 122" strokeWidth="2.1" strokeOpacity="0.9" />
+            <path d="M110 64 C117 72 122 77 127 79" strokeWidth="1.7" strokeOpacity="0.7" />
+            <path d="M101 116 C107 121 114 124 121 125" strokeWidth="1.5" strokeOpacity="0.6" />
+            <path d="M129 129 C134 131 139 131 143 128" strokeWidth="1.3" strokeOpacity="0.5" />
+            <path d="M118 46 C112 56 108 64 106 70" strokeWidth="1.5" strokeOpacity="0.55" />
+          </g>
+        )}
+        {despeinada && (
+          <path d="M124 130 Q131 134 137 130 Q133 137 127 135 Z" fill={BOCA} fillOpacity="0.35" />
+        )}
       </g>
       {sudor && (
         <g fill="#86c8ea" fillOpacity="0.85">
@@ -337,6 +438,13 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
           <path d="M120 178 c2 3 3 5 0 7 c-3 -2 -2 -4 0 -7 Z" />
           <ellipse cx="108" cy="190" rx="3" ry="1.4" fillOpacity="0.5" fill="#fff" />
           <ellipse cx="133" cy="193" rx="3" ry="1.4" fillOpacity="0.5" fill="#fff" />
+        </g>
+      )}
+      {despeinada && (
+        <g fill="#86c8ea" fillOpacity="0.8">
+          <path d="M105 150 c1.8 2.8 2.4 4.4 0 6.2 c-2.4 -1.8 -1.8 -3.4 0 -6.2 Z" />
+          <path d="M137 156 c1.8 2.8 2.4 4.4 0 6.2 c-2.4 -1.8 -1.8 -3.4 0 -6.2 Z" />
+          <path d="M120 200 c1.6 2.6 2.2 4 0 5.6 c-2.2 -1.6 -1.6 -3 0 -5.6 Z" />
         </g>
       )}
       {mojada && (
