@@ -429,7 +429,7 @@ export function dejarPista(e: Estado): Estado {
   return { ...s, ultima: 'Dejas algo a la vista, como por descuido. Él lo va a encontrar.', log: log(s, 'Dejaste una pista a la vista.') };
 }
 
-export type Limpieza = 'sabanas' | 'ropa' | 'banar' | 'esconder';
+export type Limpieza = 'sabanas' | 'ropa' | 'banar' | 'esconder' | 'peinar';
 export function limpiar(e: Estado, que: Limpieza): Estado {
   const r = { ...e.rastros };
   let t = '';
@@ -439,6 +439,9 @@ export function limpiar(e: Estado, que: Limpieza): Estado {
   } else if (que === 'ropa') {
     r.ropa = false;
     t = 'Escondes la ropa que quedó tirada.';
+  } else if (que === 'peinar') {
+    r.despeinada = false;
+    t = 'Te acomodas el pelo frente al espejo. Ya no se nota nada, aunque el olor sigue ahí.';
   } else if (que === 'banar') {
     r.olor = 0;
     r.despeinada = false;
@@ -449,7 +452,7 @@ export function limpiar(e: Estado, que: Limpieza): Estado {
     r.ropa = false;
     t = 'Guardas todo en una caja del sótano. Quizá no deberías.';
   }
-  const s = avanzar({ ...e, rastros: r, notaron: que === 'banar' ? [] : e.notaron }, que === 'banar' ? 18 : 10);
+  const s = avanzar({ ...e, rastros: r, notaron: que === 'banar' ? [] : e.notaron }, que === 'banar' ? 18 : que === 'peinar' ? 5 : 10);
   return { ...s, ultima: t, log: log(s, t) };
 }
 

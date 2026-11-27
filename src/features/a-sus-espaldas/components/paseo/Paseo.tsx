@@ -504,6 +504,7 @@ export default function Paseo() {
     const r = e.rastros;
     if (lugarAct.id === 'casa-habitacion' && r.sabanas) acciones.push({ id: 'sabanas', ico: '🧺', texto: 'Cambiar las sábanas', corto: 'Sábanas', hacer: () => limpiarYa('sabanas') });
     if ((lugarAct.escena === 'bano' || lugarAct.escena === 'vestidor') && r.olor > 5) acciones.push({ id: 'banar', ico: '🚿', texto: 'Bañarte', corto: 'Bañarte', hacer: () => limpiarYa('banar') });
+    if (r.despeinada && lugarAct.privado) acciones.push({ id: 'peinar', ico: '💇', texto: 'Arreglarte el pelo', corto: 'Peinarte', hacer: () => limpiarYa('peinar') });
     if (lugarAct.zona === 'casa' && r.ropa) acciones.push({ id: 'ropa-tirada', ico: '👕', texto: 'Esconder su ropa', corto: 'Su ropa', hacer: () => limpiarYa('ropa') });
     if (lugarAct.escena === 'sotano' && (r.sabanas || r.ropa)) acciones.push({ id: 'caja', ico: '📦', texto: 'Guardar todo en una caja', corto: 'Caja', hacer: () => limpiarYa('esconder') });
     if (ESCENAS_ROPA.has(lugarAct.escena) && lugarAct.privado && !sigue) {
@@ -589,7 +590,7 @@ export default function Paseo() {
   const rastros: string[] = [];
   if (e.rastros.sabanas) rastros.push('Las sábanas huelen a otro: cámbialas en tu habitación.');
   if (e.rastros.ropa) rastros.push('Quedó ropa tirada: escóndela en tu casa.');
-  if (e.rastros.despeinada) rastros.push('Traes el pelo revuelto: si pasas junto a alguien lo va a notar. Báñate para arreglarlo.');
+  if (e.rastros.despeinada) rastros.push('Traes el pelo revuelto: si pasas junto a alguien lo va a notar. Arréglatelo en un lugar privado o báñate.');
   if (e.rastros.olor > 5) rastros.push(`Hueles a otro perfume (${Math.round(e.rastros.olor)}%): báñate.`);
   if (e.rastros.escondido) rastros.push('Hay una caja escondida en el sótano. Si él baja, puede encontrarla.');
 
