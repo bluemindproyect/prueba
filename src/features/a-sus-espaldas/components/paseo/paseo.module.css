@@ -859,6 +859,11 @@ a.menuBtn2 {
   position: absolute;
   inset: 0;
   z-index: 5;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  background: #0a0710;
 }
 .mamarBtn {
   position: absolute;
