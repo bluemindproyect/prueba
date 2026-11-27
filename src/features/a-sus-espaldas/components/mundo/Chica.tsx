@@ -189,7 +189,8 @@ function Brazo({ s, a1, a2 }: { s: 1 | -1; a1: number; a2: number }) {
 
 export function Cuerpo({ g, ropa, pose, mojada = false, despeinada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean; despeinada?: boolean }) {
   const pelo = mojada ? '#1b1220' : PELO;
-  const cabeza = `rotate(${pose.cab} 120 136) translate(120 136) scale(1 0.84) translate(-120 -136)`;
+  // Proporción de adulta: cabeza más chica, anclada en la barbilla.
+  const cabeza = `rotate(${pose.cab} 120 136) translate(120 135) scale(0.82 0.7) translate(-120 -135)`;
   const sep = (pose.sep ?? 0) * 0.5;
   const rod = pose.rod ?? 0;
   const b = pose.baja ?? 0;

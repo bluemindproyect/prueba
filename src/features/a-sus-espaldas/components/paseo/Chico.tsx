@@ -62,7 +62,7 @@ function Pierna({ lado, giro, pantalon }: { lado: 1 | -1; giro: number; pantalon
 }
 
 /** Ancho de la cara dentro del cuerpo (en las medidas de `Rostro`, la cabeza mide 70 de ancho). */
-const CARA = 90;
+const CARA = 72;
 const K = CARA / 104;
 
 /**
@@ -149,7 +149,7 @@ export function CuerpoChico({
       <Brazo s={1} a1={pose.der[0]} a2={pose.der[1]} manga={ropa} piel={piel} />
       {/* cabeza */}
       <g transform={`rotate(${pose.cab ?? 0} 120 140)`}>
-        <g transform={`translate(${f(120 - 52 * K)} ${f(94 - 58 * K)})`}>
+        <g transform={`translate(${f(120 - 52 * K)} ${f(102 - 58 * K)})`}>
           <Rostro g={g} aspecto={{ piel, pelo: look.pelo }} size={CARA} />
         </g>
       </g>
