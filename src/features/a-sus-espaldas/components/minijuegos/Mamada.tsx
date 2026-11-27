@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { resultadoM, startMamada, tickMamada, zoomDe } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
-import type { Mamada as Estado, ResultadoM } from '@/features/a-sus-espaldas/lib/minijuegos/mamada';
+import { resultadoM, startMamada, tickMamada, zoomDe } from './mamada';
+import type { Mamada as Estado, ResultadoM } from './mamada';
 import { cn } from '@/lib/cn';
 import styles from './mamada.module.css';
 
