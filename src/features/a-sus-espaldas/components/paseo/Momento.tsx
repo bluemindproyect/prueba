@@ -9,8 +9,8 @@ import { Cuarto } from './Cuarto';
 import { SC, SE, poner } from './Escenario';
 import { Llamada } from '../minijuegos/Llamada';
 import { Mamada as MamadaJuego } from '../minijuegos/Mamada';
-import { zoomDe } from '../minijuegos/mamada';
-import type { Mamada as EstadoMamada, ResultadoM } from '../minijuegos/mamada';
+import { nivelDe as nivelMamada, zoomDe } from '../minijuegos/mamada';
+import type { Estado as EstadoMamada, ResultadoM } from '../minijuegos/mamada';
 import { ELLA_AGACHA, ELLA_TRAGA, EL_MANOS, T_BAJAR, Y_RODILLAS, mezclaChico, mezclaPose, posesDe, profundidadDe, suave, vaiven as vaivenM } from './blowjob';
 import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { Call2, GestoElla, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
@@ -180,7 +180,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
   /** El minijuego terminó: el momento acaba y lo que pasó cuenta en el resultado. */
   const alMamada = (r: ResultadoM) => {
-    terminar('completo', 100, 0, callRef.current ? resultado(callRef.current) : undefined, r);
+    // Deja ver el final unos segundos antes de cerrar el momento.
+    terminar('completo', 100, 3200, callRef.current ? resultado(callRef.current) : undefined, r);
   };
 
   const seguir = () => {
@@ -207,6 +208,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const elVisible = fase === 'decide' || fase === 'frente' || fase === 'parando' || fase === 'visto' || (fase === 'fin' && plan.entra && t >= plan.en);
   const mamando = fase === 'mamada';
   const zoomM = mm ? zoomDe(mm) : 0;
+  // Ya se vino y pasó la corrida: ella traga y respira.
+  const pasoElFinal = !!mm && mm.orgasmos > 0 && mm.fase === 'activo';
   const ventana = Math.round((430 - Math.min(140, (mamando ? 60 : t) * 1.4)) * (1 - 0.3 * zoomM));
   const foco = escX - 130;
   const x0 = Math.max(0, Math.min(ancho - ventana, foco - ventana / 2));
@@ -227,10 +230,10 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
   // La mamada: se arrodilla (T_BAJAR) y luego sigue el vaivén según lo cerca que está él.
   const bajaK = suave(desde / T_BAJAR);
-  const profM = mm?.fase === 'corrida' ? 'garganta' : profundidadDe(mm?.nivel ?? 0);
+  const profM = mm?.fase === 'corrida' ? 'garganta' : profundidadDe(mm ? nivelMamada(mm) : 0);
   const posesM = posesDe(profM, vaivenM(desde, ritmo));
-  const poseEllaM = desde < T_BAJAR ? mezclaPose(POSES[0], ELLA_AGACHA, bajaK) : mm?.fase === 'fin' ? ELLA_TRAGA : posesM.ella;
-  const poseOtroM: PoseChico = desde < T_BAJAR ? mezclaChico(CHICO_PARADO, EL_MANOS, bajaK) : mm?.fase === 'fin' ? EL_MANOS : posesM.el;
+  const poseEllaM = desde < T_BAJAR ? mezclaPose(POSES[0], ELLA_AGACHA, bajaK) : pasoElFinal ? ELLA_TRAGA : posesM.ella;
+  const poseOtroM: PoseChico = desde < T_BAJAR ? mezclaChico(CHICO_PARADO, EL_MANOS, bajaK) : pasoElFinal ? EL_MANOS : posesM.el;
   const subeM = Y_RODILLAS * SE * (desde < T_BAJAR ? bajaK : 1);
   const caraElla =
     mamando
@@ -319,7 +322,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const ereccion = mamando ? 1 : Math.min(1, 0.3 + t / 90);
   // Él recoge el top del suelo cuando entra.
   const topX = fase === 'frente' || fase === 'visto' ? puertaX + 62 : centro + 92;
-  const corrida = t >= 100 || fase === 'fin' || (mamando && !!mm && mm.fase !== 'sube');
+  const corrida = t >= 100 || fase === 'fin' || (mamando && (mm?.fase === 'corrida' || pasoElFinal));
   const sudor = Math.min(7, Math.max(0, Math.floor((t - 45) / 8)));
   // Lo que chorrea: desde que se pone de perrito hasta que él entra o ella se aparta.
   const chorrea = perrito && t >= 66;
@@ -345,7 +348,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
   const texto =
     fase === 'mamada'
-      ? mm?.fase === 'corrida' ? 'No pares.' : mm?.fase === 'fin' ? 'Lo sueltas.' : 'Te arrodillas frente a él.'
+      ? mm?.fase === 'corrida' ? 'No pares.' : pasoElFinal ? 'Lo sueltas.' : 'Te arrodillas frente a él.'
       : fase === 'pasos'
       ? 'Se oyen pasos…'
       : fase === 'decide'
@@ -531,9 +534,6 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
         </small>
       </div>
       {fase === 'pasos' && <p className={styles.pasos}>👣 👣 👣</p>}
-      <p key={texto} className={cn(styles.texto, fase === 'pasos' && styles.textoAlerta)} aria-live="polite">
-        {texto}
-      </p>
       {fase === 'decide' && (
         <div className={styles.decide}>
           <button type="button" className={styles.parar} onClick={parar} data-tour="parar">

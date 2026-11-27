@@ -98,4 +98,8 @@ export function zoomDe(s: Estado): number {
 export function resultadoM(s: Estado): ResultadoM {
   return {
     modo: s.modo,
-    orgasmos: s.orgas
+    orgasmos: s.orgasmos,
+    chorros: Math.round(s.chorros),
+    segundos: Math.round(s.tiempo),
+  };
+}
