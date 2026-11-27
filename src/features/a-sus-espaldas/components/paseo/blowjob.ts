@@ -5,13 +5,13 @@ import type { PoseChico } from './Chico';
 import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
 
 /**
- * La mamada: ella agachada a la altura de su cadera y él de pie con las manos en su cabeza.
- * Todo en segundos. Igual que en `abrazo`, el brazo «der» de cada figura es el que mira al otro,
- * porque el escenario voltea el dibujo.
+ * La mamada: ella arrodillada a la altura de su cadera y él de pie, inclinado sobre ella con
+ * las manos en su cabeza. Todo en segundos. Igual que en `abrazo`, el brazo «der» de cada
+ * figura es el que mira al otro, porque el escenario voltea el dibujo.
  *
- * Ella no está de pie: va bajada. El escenario tiene que colocarla con `Y_RODILLAS` de más en el
- * eje Y y voltearla hacia él. Los `baja` de las posturas son la flexión de las piernas encima de
- * esa bajada.
+ * Ella va bajada con `Y_RODILLAS` en el eje Y y las rodillas dobladas por `flex`. Los `baja`
+ * de las posturas acompañan esa bajada. Él se inclina con `inc` para poder alcanzarla: sin
+ * inclinarse los brazos no llegan.
  *
  * Orden de fases: bajar, abrir la boca, mamar con el vaivén del ritmo, hundirse, salir a
  * respirar y, si toca, tragar.
@@ -33,10 +33,10 @@ export interface Efecto {
   profundidad?: Profundidad;
 }
 
-/** Cuánto hay que bajarla respecto al piso para que quede a la altura de la cadera. */
-export const Y_RODILLAS = 78;
-/** Qué tan pegada queda a él. */
-export const SEPARACION = 26;
+/** Cuánto hay que bajarla respecto al piso para que la boca quede a la altura de la cadera. */
+export const Y_RODILLAS = 60;
+/** Qué tan pegada queda a él (entre centros). */
+export const SEPARACION = 20;
 
 export const T_BAJAR = 0.7;
 export const T_ABRIR = 0.35;
@@ -51,20 +51,20 @@ const PARADA = POSES[0];
 
 /* ---------- ella ---------- */
 
-export const ELLA_BAJA: Pose = { ...PARADA, id: 'bajaMamada', nombre: 'Se agacha', di: 20, fi: -70, dd: 20, fd: -70, inc: 14, cab: 16, sep: 14, rod: 26, baja: 62, cara: 'labio' };
-export const ELLA_AGACHA: Pose = { ...PARADA, id: 'agachada', nombre: 'Manos en sus muslos', di: 26, fi: -84, dd: 26, fd: -84, inc: 18, cab: 20, sep: 12, rod: 28, baja: 74, cara: 'labio' };
-export const ELLA_MAMA: Pose = { ...PARADA, id: 'mamando', nombre: 'Mamando', di: 30, fi: -96, dd: 30, fd: -96, inc: 20, cab: 22, sep: 10, rod: 30, baja: 80, cara: 'ojoscerrados' };
-export const ELLA_HONDO: Pose = { ...PARADA, id: 'hondo', nombre: 'Hasta el fondo', di: 32, fi: -104, dd: 32, fd: -104, inc: 24, cab: 26, sep: 9, rod: 32, baja: 86, cara: 'aguanta' };
-export const ELLA_SALE: Pose = { ...PARADA, id: 'sale', nombre: 'Sale a respirar', di: 24, fi: -78, dd: 24, fd: -78, inc: 10, cab: -5, sep: 13, rod: 24, baja: 70, cara: 'jadeo' };
-export const ELLA_TRAGA: Pose = { ...PARADA, id: 'traga', nombre: 'Traga', di: 22, fi: -72, dd: 22, fd: -72, inc: 12, cab: -11, sep: 12, rod: 22, baja: 68, cara: 'alivio' };
+export const ELLA_BAJA: Pose = { ...PARADA, id: 'bajaMamada', nombre: 'Se agacha', di: 16, fi: -8, dd: 18, fd: -6, inc: 10, cab: 8, sep: 13, rod: 14, flex: 40, baja: 34, cara: 'labio' };
+export const ELLA_AGACHA: Pose = { ...PARADA, id: 'agachada', nombre: 'Manos en sus muslos', di: 8, fi: -20, dd: 10, fd: -18, inc: 15, cab: 2, sep: 12, rod: 16, flex: 62, baja: 56, cara: 'labio' };
+export const ELLA_MAMA: Pose = { ...PARADA, id: 'mamando', nombre: 'Mamando', di: 28, fi: 34, dd: 30, fd: 36, inc: 18, cab: -8, sep: 11, rod: 20, flex: 76, baja: 70, cara: 'ojoscerrados' };
+export const ELLA_HONDO: Pose = { ...PARADA, id: 'hondo', nombre: 'Hasta el fondo', di: 33, fi: 40, dd: 35, fd: 42, inc: 21, cab: -16, sep: 10, rod: 22, flex: 80, baja: 74, cara: 'aguanta' };
+export const ELLA_SALE: Pose = { ...PARADA, id: 'sale', nombre: 'Sale a respirar', di: 22, fi: 20, dd: 24, fd: 22, inc: 14, cab: 4, sep: 12, rod: 18, flex: 74, baja: 66, cara: 'jadeo' };
+export const ELLA_TRAGA: Pose = { ...PARADA, id: 'traga', nombre: 'Traga', di: 18, fi: 12, dd: 20, fd: 14, inc: 12, cab: 6, sep: 12, rod: 17, flex: 72, baja: 64, cara: 'alivio' };
 
 /* ---------- él ---------- */
 
 export const EL_PLANTADO: PoseChico = { ...CHICO_PARADO };
-export const EL_MANOS: PoseChico = { izq: [42, 62], der: [42, 62], cab: 8, inc: 2 };
-export const EL_AGARRA: PoseChico = { izq: [52, 78], der: [46, 70], cab: 12, inc: 3 };
-export const EL_CABEZA: PoseChico = { izq: [30, 40], der: [30, 40], cab: -14, inc: -4 };
-export const EL_AGUANTA: PoseChico = { izq: [58, 84], der: [58, 84], cab: -18, inc: -6 };
+export const EL_MANOS: PoseChico = { izq: [4, -6], der: [6, -8], cab: 8, inc: 10 };
+export const EL_AGARRA: PoseChico = { izq: [-12, -14], der: [-18, -25], cab: 14, inc: 18 };
+export const EL_CABEZA: PoseChico = { izq: [-16, -18], der: [-24, -30], cab: 20, inc: 22 };
+export const EL_AGUANTA: PoseChico = { izq: [-14, -12], der: [-20, -22], cab: -10, inc: 24 };
 
 const L = (a: number, b: number, t: number): number => a + (b - a) * t;
 const C = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -110,34 +110,44 @@ export const CARA_DE: Record<Profundidad, string> = { suave: 'labio', honda: 'oj
 
 /** Las poses de fondo según la profundidad, ya mezcladas con el vaivén. */
 export function posesDe(profundidad: Profundidad, v: number): { ella: Pose; el: PoseChico } {
-  const k = profundidad === 'garganta' ? 0.35 + v * 0.65 : profundidad === 'honda' ? v * 0.6 : v * 0.35;
+  const k = profundidad === 'garganta' ? 0.45 + v * 0.55 : profundidad === 'honda' ? 0.2 + v * 0.65 : v * 0.5;
   return {
     ella: mezclaPose(ELLA_MAMA, ELLA_HONDO, k),
-    el: mezclaChico(EL_AGARRA, EL_CABEZA, profundidad === 'garganta' ? 0.4 + v * 0.6 : v * 0.3),
+    el:
+      profundidad === 'garganta'
+        ? mezclaChico(EL_CABEZA, EL_AGUANTA, 0.3 + v * 0.55)
+        : profundidad === 'honda'
+          ? mezclaChico(EL_AGARRA, EL_CABEZA, 0.25 + v * 0.6)
+          : mezclaChico(EL_MANOS, EL_AGARRA, 0.3 + v * 0.5),
   };
 }
 
+/** Mezcla dos poses. `cara`, `id` y `nombre` los pone la pose dominante, no siempre la segunda. */
 export function mezclaPose(a: Pose, b: Pose, t: number): Pose {
+  const k = C(t, 0, 1);
   return {
-    ...b,
-    di: L(a.di, b.di, t),
-    fi: L(a.fi, b.fi, t),
-    dd: L(a.dd, b.dd, t),
-    fd: L(a.fd, b.fd, t),
-    inc: C(L(a.inc, b.inc, t), -15, 30),
-    cab: C(L(a.cab, b.cab, t), -20, 30),
-    sep: C(L(a.sep ?? 0, b.sep ?? 0, t), 0, 45),
-    rod: C(L(a.rod ?? 0, b.rod ?? 0, t), -20, 40),
-    baja: C(L(a.baja ?? 0, b.baja ?? 0, t), 0, 180),
+    ...(k < 0.5 ? a : b),
+    di: L(a.di, b.di, k),
+    fi: L(a.fi, b.fi, k),
+    dd: L(a.dd, b.dd, k),
+    fd: L(a.fd, b.fd, k),
+    inc: C(L(a.inc, b.inc, k), -15, 30),
+    cab: C(L(a.cab, b.cab, k), -20, 30),
+    sep: C(L(a.sep ?? 0, b.sep ?? 0, k), 0, 45),
+    rod: C(L(a.rod ?? 0, b.rod ?? 0, k), -20, 40),
+    baja: C(L(a.baja ?? 0, b.baja ?? 0, k), 0, 120),
+    flex: C(L(a.flex ?? 0, b.flex ?? 0, k), 0, 110),
   };
 }
 
 export function mezclaChico(a: PoseChico, b: PoseChico, t: number): PoseChico {
+  const k = C(t, 0, 1);
   return {
-    izq: [L(a.izq[0], b.izq[0], t), L(a.izq[1], b.izq[1], t)],
-    der: [L(a.der[0], b.der[0], t), L(a.der[1], b.der[1], t)],
-    cab: C(L(a.cab ?? 0, b.cab ?? 0, t), -22, 20),
-    inc: C(L(a.inc ?? 0, b.inc ?? 0, t), -15, 15),
+    izq: [L(a.izq[0], b.izq[0], k), L(a.izq[1], b.izq[1], k)],
+    der: [L(a.der[0], b.der[0], k), L(a.der[1], b.der[1], k)],
+    cab: C(L(a.cab ?? 0, b.cab ?? 0, k), -22, 22),
+    inc: C(L(a.inc ?? 0, b.inc ?? 0, k), -15, 34),
+    flex: C(L(a.flex ?? 0, b.flex ?? 0, k), 0, 110),
     paso: 0,
   };
 }
