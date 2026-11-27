@@ -405,7 +405,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
               </g>
             </g>
             <g transform={poner(ellaX, 1, SE)}>
-              <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} mojada={t >= 78} />
+              <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} mojada={t >= 78} despeinada={t >= 45} />
             </g>
           </g>
         </g>

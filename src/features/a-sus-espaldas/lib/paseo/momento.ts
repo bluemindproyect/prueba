@@ -155,7 +155,10 @@ export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final,
       sabanas: e.rastros.sabanas || lugar.escena === 'cama' || lugar.escena === 'hotel',
       ropa: e.rastros.ropa || rng() < 0.4,
       olor: 70,
+      // Si no se detuvieron a tiempo, el pelo queda revuelto hasta que se bañe.
+      despeinada: e.rastros.despeinada || final !== 'parado' || alcanzado >= 70,
     },
+    notaron: [],
   };
 
   const n = e.nombre;

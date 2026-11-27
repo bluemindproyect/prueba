@@ -126,6 +126,8 @@ interface Props {
   ropa: 'normal' | 'bikini';
   /** sube cada vez que se cambia de ropa, para el destello */
   ropaN: number;
+  /** trae el pelo revuelto (hasta que se bañe) */
+  despeinada?: boolean;
   gestoElla: Gesto;
   seguidor: { look: Look; g: Gesto; nombre: string } | null;
   /** dónde estaba parado el que te sigue cuando aceptó: de ahí empieza a caminar */
@@ -493,7 +495,7 @@ export function Escenario(props: Props) {
           </g>
         )}
         <g transform={poner(p.x, p.dir, SE, sube)}>
-          <Cuerpo g={gestoElla} ropa={ropa === 'bikini' ? ROPA_BIKINI : ROPA_CASUAL} pose={poseElla} />
+          <Cuerpo g={gestoElla} ropa={ropa === 'bikini' ? ROPA_BIKINI : ROPA_CASUAL} pose={poseElla} despeinada={props.despeinada} />
         </g>
         {ropaN > 0 && (
           <g key={ropaN} className={styles.destello} style={{ transformOrigin: `${p.x}px ${PISO - 100}px` }}>

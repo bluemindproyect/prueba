@@ -28,6 +28,7 @@ import {
   ir,
   limpiar,
   lugarPorId,
+  percibir,
   lugares,
   nuevoCiclo,
   personas,
@@ -244,6 +245,17 @@ export default function Paseo() {
     burbujaN.current += 1;
     setBurbuja({ id, texto: paraGlobo(texto), n: burbujaN.current });
   };
+
+  // Si pasa junto a alguien con el pelo revuelto, lo nota (una vez por persona hasta que se bañe).
+  useEffect(() => {
+    if (!cerca || !e.rastros.despeinada || (e.notaron ?? []).includes(cerca)) return;
+    const quien = cerca === 'el' ? undefined : personas(e.ciclo).find((p) => p.id === cerca);
+    const r = percibir(e, cerca, quien);
+    if (!r) return;
+    setE(r.estado);
+    decir(cerca, r.frase);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cerca]);
 
   /* ---------- lo que hay en pantalla ---------- */
 
@@ -577,6 +589,7 @@ export default function Paseo() {
   const rastros: string[] = [];
   if (e.rastros.sabanas) rastros.push('Las sábanas huelen a otro: cámbialas en tu habitación.');
   if (e.rastros.ropa) rastros.push('Quedó ropa tirada: escóndela en tu casa.');
+  if (e.rastros.despeinada) rastros.push('Traes el pelo revuelto: si pasas junto a alguien lo va a notar. Báñate para arreglarlo.');
   if (e.rastros.olor > 5) rastros.push(`Hueles a otro perfume (${Math.round(e.rastros.olor)}%): báñate.`);
   if (e.rastros.escondido) rastros.push('Hay una caja escondida en el sótano. Si él baja, puede encontrarla.');
 
@@ -613,6 +626,7 @@ export default function Paseo() {
         gente={gente}
         ropa={ropa}
         ropaN={ropaN}
+        despeinada={!!e.rastros.despeinada}
         gestoElla={gesto(caraElla)}
         seguidor={sigue ? { look: sigue.look, g: gesto('embobado'), nombre: sigue.nombre } : null}
         seguidorDesde={desde}
