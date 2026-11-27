@@ -1,178 +1,45 @@
 .panel {
-  --piel: #f6cdb4;
-  --pielSombra: #e0a58a;
-  --pelo: #3b2333;
-  --peloLuz: #573349;
-  --labio: #d76b90;
-  --boca: #8a2c4c;
-  --pene: #e8a89f;
-  --glande: #dc7f96;
-  --fondo: #1b141c;
-
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  width: min(360px, 100%);
-  border-radius: 18px;
-  border: 1px solid #3a2b3d;
-  background: linear-gradient(180deg, #241a26, #161019);
-  color: #f7eef4;
-  font: 500 13px/1.3 system-ui, -apple-system, sans-serif;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.tabs {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.75rem;
+  background: #0a0710;
+  font-family: var(--util);
+  color: var(--text);
 }
-
-.tab {
-  flex: 1;
-  padding: 6px 8px;
-  border: 1px solid #46354a;
-  border-radius: 999px;
-  background: #1e1622;
-  color: #bda9c4;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.tabOn {
-  border-color: #e0457b;
-  background: #3a1f2e;
-  color: #ffd9e6;
-}
-
-.marco {
-  overflow: hidden;
-  border-radius: 12px;
-  transition: transform 140ms ease-out;
-  will-change: transform;
-}
-
-.escena {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.gota {
-  fill: var(--fondo);
-  stroke: #fdf6f0;
-  stroke-width: 1.1;
-  animation: caer 0.85s ease-in infinite;
-}
-
-@keyframes caer {
-  0% { opacity: 0; translate: 0 -4px; }
-  25% { opacity: 1; }
-  100% { opacity: 0; translate: -7px 14px; }
-}
-
-.kick {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  color: #cbb6d2;
-}
-
+.kick { margin: 0; font-size: 0.78rem; color: var(--muted); text-align: center; }
 .barra {
   position: relative;
-  height: 64px;
-  width: 22px;
-  margin: 0 auto;
+  flex: 1;
+  width: 2.2rem;
+  min-height: 5rem;
   border-radius: 999px;
-  border: 1px solid #4a3550;
-  background: #140f18;
+  background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
-
-.barra i {
-  position: absolute;
-  inset: auto 0 0 0;
-  display: block;
-  border-radius: 999px;
-  transition: height 90ms linear;
-}
-
-.barra b,
-.barra em {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: #ffffff55;
-}
-
-.barra em {
-  background: #ffffff26;
-}
-
-.chorros {
-  margin: 0;
-  text-align: center;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: #e88fb0;
-}
-
+.barra i { position: absolute; left: 0; right: 0; bottom: 0; transition: height 0.1s linear; }
+.barra b { position: absolute; left: 0; right: 0; height: 2px; background: #fff; opacity: 0.8; }
+.barra em { position: absolute; left: 0; right: 0; height: 1px; background: #e0457b; opacity: 0.9; }
+.chorros { margin: 0; font-size: 0.72rem; color: var(--rose); }
 .boton {
-  position: relative;
-  display: grid;
-  gap: 2px;
-  padding: 12px;
-  border: 1px solid #4a3550;
+  width: 100%;
+  min-height: 62px;
+  border: 0;
   border-radius: 14px;
-  background: #2a1e30;
-  color: #fdf2f7;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
+  background: linear-gradient(#3a6b86, #86c8ea);
+  color: #fff;
+  font-family: var(--prose);
+  font-size: 1.05rem;
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
   touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
 }
-
-.boton small {
-  font-size: 11px;
-  font-weight: 500;
-  color: #bda9c4;
-}
-
-.boton:active,
-.botonOn {
-  background: #3d2743;
-  transform: translateY(1px);
-}
-
-.botonCorrida {
-  border-color: #e0457b;
-  background: #4a1f31;
-  animation: latir 0.5s ease-in-out infinite alternate;
-}
-
-@keyframes latir {
-  from { box-shadow: 0 0 0 0 #e0457b00; }
-  to { box-shadow: 0 0 14px 2px #e0457b66; }
-}
-
-.zoom {
-  margin: 0;
-  min-height: 14px;
-  text-align: right;
-  font-size: 10px;
-  color: #7a6780;
-  font-variant-numeric: tabular-nums;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .marco { transition: none; }
-  .botonCorrida, .gota { animation: none; }
-}
+.boton small { font-family: var(--util); font-style: normal; font-size: 0.62rem; opacity: 0.85; }
+.botonOn { transform: scale(0.97); background: linear-gradient(#86c8ea, #cfeaf7); color: #10202a; }
+.botonCorrida { background: linear-gradient(#8f2a52, #e0457b); }
+.zoom { margin: 0; font-size: 0.6rem; color: var(--muted); height: 0.8rem; }

@@ -85,7 +85,7 @@ export type Final = 'completo' | 'parado' | 'visto';
 export interface MamadaResultado {
   chorros: number;
   segundos: number;
-  orgasmos: number;
+  sobre: number;
 }
 
 export interface Resultado {
@@ -144,7 +144,7 @@ export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final,
   }
   // El minijuego: más tiempo y más chorros dan más satisfacción.
   if (mamada) {
-    const extra = Math.min(14, Math.round(mamada.segundos / 6 + mamada.chorros * 1.5 + Math.max(0, mamada.orgasmos - 1) * 3));
+    const extra = Math.min(14, Math.round(mamada.segundos / 6 + mamada.chorros * 1.5 + mamada.sobre));
     sat += extra;
     motivos.push({ icono: '🙇', texto: `Lo llevaste hasta el final +${extra}` });
   }
