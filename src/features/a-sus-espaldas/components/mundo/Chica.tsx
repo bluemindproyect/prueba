@@ -3,6 +3,9 @@ import type { Gesto } from '@/features/a-sus-espaldas/lib/mundo/gestos';
 /**
  * Ella en dibujo plano 2D: cuerpo completo, delgada, pelo largo lacio con raya de lado y
  * cara sencilla. La cara usa los mismos gestos que el resto del juego.
+ *
+ * Las piernas llevan cadera, rodilla y tobillo: `flex` las dobla de verdad (0 de pie, ~80
+ * arrodillada) y `rod` las abre. Los pies cuelgan del tobillo, no del piso.
  */
 
 export interface Ropa {
@@ -35,6 +38,7 @@ export interface Pose {
   sep?: number; // separación de las piernas (px por lado)
   rod?: number; // rodillas hacia afuera (+) o adentro (-)
   baja?: number; // cuánto baja el cuerpo (flexión)
+  flex?: number; // flexión de la rodilla: 0 de pie, ~80 arrodillada
 }
 
 export const POSES: readonly Pose[] = [
@@ -54,9 +58,9 @@ export const POSES: readonly Pose[] = [
   { id: 'deseo', nombre: 'Insinuándose', di: 38, fi: -55, dd: 76, fd: -165, inc: -4, cab: -8, cara: 'deseoella' },
   { id: 'placer', nombre: 'Entregada', di: 30, fi: 50, dd: 30, fd: 50, inc: 4, cab: 12, cara: 'placerfuerte' },
   { id: 'piernas', nombre: 'Piernas separadas', di: 12, fi: 6, dd: 12, fd: 6, inc: 0, cab: 4, cara: 'sedienta', sep: 17 },
-  { id: 'sentadilla', nombre: 'Sentadilla', di: 62, fi: 70, dd: 62, fd: 70, inc: 0, cab: 0, cara: 'esfuerzo', sep: 28, rod: 20, baja: 54 },
+  { id: 'sentadilla', nombre: 'Sentadilla', di: 62, fi: 70, dd: 62, fd: 70, inc: 0, cab: 0, cara: 'esfuerzo', sep: 28, rod: 20, baja: 54, flex: 52 },
   { id: 'agitada', nombre: 'Agitada, manos en la cintura', di: 38, fi: -55, dd: 38, fd: -55, inc: 2, cab: 6, cara: 'jadeo', sep: 9 },
-  { id: 'apoyada', nombre: 'Apoyada, jadeando', di: 22, fi: 6, dd: 22, fd: 6, inc: 7, cab: 12, cara: 'agotada', sep: 18, rod: 10, baja: 24 },
+  { id: 'apoyada', nombre: 'Apoyada, jadeando', di: 22, fi: 6, dd: 22, fd: 6, inc: 7, cab: 12, cara: 'agotada', sep: 18, rod: 10, baja: 24, flex: 22 },
   { id: 'arqueada', nombre: 'Arqueada', di: 150, fi: 172, dd: 150, fd: 172, inc: -7, cab: -10, cara: 'gemido', sep: 13 },
   { id: 'aguanta', nombre: 'Aguantando', di: 18, fi: -118, dd: 18, fd: -118, inc: 0, cab: 8, cara: 'aguanta', sep: 8, rod: -9, baja: 10 },
   { id: 'tiembla', nombre: 'Temblando', di: 20, fi: -120, dd: 20, fd: -120, inc: 2, cab: 10, cara: 'tiemblo', sep: 11, rod: -12, baja: 14 },
@@ -111,12 +115,14 @@ function Cara({ g }: { g: Gesto }) {
   const cL = y0 - g.k * 2.2;
   const cR = y0 - g.k * 2.2 - g.lado * 3;
   const mid = y0 + g.k * 6;
+  // La barbilla baja con la boca abierta: si no, la abertura no cabe.
+  const bajo = mid + g.open * 22 + 3;
   const boca =
     g.open > 0.08 ? (
       <g>
-        <path d={`M${f(120 - w)} ${f(cL)} Q120 ${f(mid)} ${f(120 + w)} ${f(cR)} Q120 ${f(mid + g.open * 12 + 3)} ${f(120 - w)} ${f(cL)} Z`} fill="#6a2530" stroke={BOCA} strokeWidth="1.2" strokeLinejoin="round" />
+        <path d={`M${f(120 - w)} ${f(cL)} Q120 ${f(mid)} ${f(120 + w)} ${f(cR)} Q120 ${f(bajo)} ${f(120 - w)} ${f(cL)} Z`} fill="#6a2530" stroke={BOCA} strokeWidth="1.2" strokeLinejoin="round" />
         {ex('dientes') && <path d={`M${f(120 - w * 0.7)} ${f(cL + 0.6)} Q120 ${f(mid)} ${f(120 + w * 0.7)} ${f(cR + 0.6)} L${f(120 + w * 0.6)} ${f(cR + 3.4)} Q120 ${f(mid + 3)} ${f(120 - w * 0.6)} ${f(cL + 3.4)} Z`} fill="#fff" />}
-        {g.open > 0.35 && <ellipse cx="120" cy={f(mid + g.open * 9 + 2)} rx={f(w * 0.45)} ry="2.2" fill="#d9707a" />}
+        {g.open > 0.3 && <ellipse cx="120" cy={f(bajo - 4)} rx={f(w * 0.5)} ry={f(2 + g.open * 2.6)} fill="#d9707a" />}
       </g>
     ) : (
       <path d={`M${f(120 - w)} ${f(cL)} Q120 ${f(mid + 1.4)} ${f(120 + w)} ${f(cR)}`} fill="none" stroke={BOCA} strokeWidth="1.9" strokeLinecap="round" />
@@ -155,7 +161,7 @@ export function CaritaElla({ g, size = 96, ropa = ROPA_CASUAL }: { g: Gesto; siz
   );
 }
 
-/** Cuerpo completo; `pose` cambia brazos e inclinación. */
+/** Cuerpo completo; `pose` cambia brazos, inclinación y rodillas. */
 export function Chica({ g, size = 220, ropa, pose = POSES[0], mojada = false }: { g: Gesto; size?: number; ropa?: Ropa; pose?: Pose; mojada?: boolean }) {
   const r = ropa ?? (pose.sep !== undefined ? ROPA_ESCENA : ROPA_CASUAL);
   return (
@@ -189,41 +195,55 @@ function Brazo({ s, a1, a2 }: { s: 1 | -1; a1: number; a2: number }) {
 
 export function Cuerpo({ g, ropa, pose, mojada = false, despeinada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean; despeinada?: boolean }) {
   const pelo = mojada ? '#1b1220' : PELO;
-  const cabeza = `rotate(${pose.cab} 120 136) translate(120 136) scale(1 0.84) translate(-120 -136)`;
+  // Proporción de adulta: cabeza más chica, anclada en la barbilla.
+  const cabeza = `rotate(${pose.cab} 120 136) translate(120 135) scale(0.82 0.7) translate(-120 -135)`;
   const sep = (pose.sep ?? 0) * 0.5;
   const rod = pose.rod ?? 0;
   const b = pose.baja ?? 0;
+  const flex = pose.flex ?? 0;
   const sudor = g.extras.includes('sudor');
   const bikini = ropa.tipo === 'bikini';
   const desnuda = ropa.tipo === 'desnuda';
   /** Bikini con el color del top igual a la piel: queda el pecho al aire y la braga puesta. */
   const sinSujetador = bikini && ropa.vestido === PIEL;
-  const muslo = (lado: 1 | -1): string => {
-    const x0 = 120 + lado * 8;
-    const yy = (bikini ? 284 : 296) + b;
-    const cx = x0 + lado * (sep * 0.4 + rod);
-    const cy = (yy + 430) / 2;
-    const px = x0 + lado * sep;
-    const t = 0.3;
-    const x = (1 - t) ** 2 * x0 + 2 * t * (1 - t) * cx + t * t * px;
-    const y = (1 - t) ** 2 * yy + 2 * t * (1 - t) * cy + t * t * 430;
-    return `M${120 + lado * 12} 268 L${x.toFixed(1)} ${(y - b).toFixed(1)}`;
-  };
   const corto = ropa.tipo === 'short' || bikini;
   const y0 = desnuda ? 288 : bikini ? 284 : corto ? 296 : 340;
+  const cadera = y0 + b;
+  /**
+   * Cadera → rodilla → tobillo. El largo se reescala para que de pie el pie caiga en 430;
+   * al doblar la rodilla el tobillo sube y se va hacia afuera, que es como se lee arrodillada.
+   */
+  const pierna = (lado: 1 | -1) => {
+    const x0 = 120 + lado * 8;
+    const largo = Math.max(26, 430 - cadera);
+    const esc = largo / 132;
+    const l1 = 68 * esc;
+    const l2 = 64 * esc;
+    const s1 = rad(rod + sep * 0.9);
+    const kx = x0 + lado * l1 * Math.sin(s1);
+    const ky = cadera + l1 * Math.cos(s1);
+    const s2 = rad(rod + sep * 0.9 + flex);
+    const ax = kx + lado * (l2 * Math.sin(s2) + sep * 1.1);
+    const ay = ky + l2 * Math.cos(s2);
+    return { muslo: `M${f(x0)} ${f(cadera)} L${f(kx)} ${f(ky)}`, resto: ` L${f(ax)} ${f(ay)}`, ax, ay };
+  };
+  const pIzq = pierna(-1);
+  const pDer = pierna(1);
+  const dIzq = pIzq.muslo + pIzq.resto;
+  const dDer = pDer.muslo + pDer.resto;
   return (
     <g strokeLinejoin="round" transform={`rotate(${pose.inc} 120 300)`}>
       {/* piernas delgadas */}
-      <g stroke={PIEL} strokeWidth="17" strokeLinecap="round" fill="none">
-        <path d={`M112 ${y0 + b} Q${112 - sep * 0.4 - rod} ${(y0 + b + 430) / 2} ${112 - sep} 430`} />
-        <path d={`M128 ${y0 + b} Q${128 + sep * 0.4 + rod} ${(y0 + b + 430) / 2} ${128 + sep} 430`} />
+      <g stroke={PIEL} strokeWidth="17" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <path d={dIzq} />
+        <path d={dDer} />
       </g>
-      <g strokeLinecap="round" fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0.32" strokeWidth="5" transform="translate(5.5 0)">
-        <path d={`M112 ${y0 + b + 34} Q${112 - sep * 0.4 - rod} ${(y0 + b + 430) / 2} ${112 - sep} 424`} />
-        <path d={`M128 ${y0 + b + 34} Q${128 + sep * 0.4 + rod} ${(y0 + b + 430) / 2} ${128 + sep} 424`} />
+      <g strokeLinecap="round" strokeLinejoin="round" fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0.32" strokeWidth="5" transform="translate(5.5 0)">
+        <path d={dIzq} />
+        <path d={dDer} />
       </g>
-      <ellipse cx={112 - sep} cy="437" rx="15" ry="6.5" fill={ropa.zapatos} stroke={TINTA} strokeOpacity="0.4" strokeWidth="0.8" />
-      <ellipse cx={128 + sep} cy="437" rx="15" ry="6.5" fill={ropa.zapatos} stroke={TINTA} strokeOpacity="0.4" strokeWidth="0.8" />
+      <ellipse cx={pIzq.ax} cy={pIzq.ay + 2} rx="15" ry="6.5" fill={ropa.zapatos} stroke={TINTA} strokeOpacity="0.4" strokeWidth="0.8" transform={`rotate(${-flex * 0.55} ${f(pIzq.ax)} ${f(pIzq.ay + 2)})`} />
+      <ellipse cx={pDer.ax} cy={pDer.ay + 2} rx="15" ry="6.5" fill={ropa.zapatos} stroke={TINTA} strokeOpacity="0.4" strokeWidth="0.8" transform={`rotate(${flex * 0.55} ${f(pDer.ax)} ${f(pDer.ay + 2)})`} />
       <g transform={`translate(0 ${b})`}>
       {/* pelo largo detrás */}
       <g transform={cabeza}>
@@ -269,8 +289,8 @@ export function Cuerpo({ g, ropa, pose, mojada = false, despeinada = false }: { 
           <ellipse cx="134" cy="183" rx="3.4" ry="1.7" fill="#fff" fillOpacity="0.4" stroke="none" transform="rotate(25 134 183)" />
           <path d="M122 190 Q128 200 129 204 M118 190 Q112 200 111 204" fill="none" stroke={ropa.sombra} strokeOpacity="0.5" strokeWidth="1.2" strokeLinecap="round" />
           <path d="M97 190 L90 188 M143 190 L150 188" fill="none" stroke={ropa.vestido} strokeWidth="1.6" strokeLinecap="round" strokeOpacity="1" />
-          <path d={muslo(-1)} fill="none" stroke={PIEL} strokeOpacity="1" strokeWidth="22" strokeLinecap="round" />
-          <path d={muslo(1)} fill="none" stroke={PIEL} strokeOpacity="1" strokeWidth="22" strokeLinecap="round" />
+          <path d={pIzq.muslo} fill="none" stroke={PIEL} strokeOpacity="1" strokeWidth="22" strokeLinecap="round" />
+          <path d={pDer.muslo} fill="none" stroke={PIEL} strokeOpacity="1" strokeWidth="22" strokeLinecap="round" />
           <path d="M96 261 C109 267 131 267 144 261 C141 274 130 286 120 295 C110 286 99 274 96 261 Z" fill={ropa.short} />
           <path d="M120 295 L120 282" fill="none" stroke={ropa.sombra} strokeOpacity="0.75" strokeWidth="1.5" strokeLinecap="round" />
           <path d="M97 262 L90 259 M143 262 L150 259" fill="none" stroke={ropa.short} strokeWidth="1.8" strokeLinecap="round" strokeOpacity="1" />
@@ -278,7 +298,6 @@ export function Cuerpo({ g, ropa, pose, mojada = false, despeinada = false }: { 
       ) : corto ? (
         <g stroke={TINTA} strokeOpacity="0.35" strokeWidth="0.8">
           <path d="M106 204 C106 216 105 226 105 232 C103 244 96 256 94 268 L146 268 C144 256 137 244 135 232 C135 226 134 216 134 204 Z" fill={PIEL} stroke="none" />
-          <path d="M97 238 Q120 246 143 238" fill="none" stroke={PIEL_SOMBRA} strokeOpacity="0" />
           <circle cx="120" cy="238" r="1.2" fill={PIEL_SOMBRA} stroke="none" />
           <path d="M102 150 C99 166 94 182 98 196 C101 200 104 203 106 204 Q120 210 134 204 C139 200 142 198 142 194 C145 180 141 168 138 150 L132 150 Q120 176 108 150 Z" fill={ropa.vestido} />
           <path d="M99 196 Q108 204 118 196 M141 196 Q132 204 122 196" fill="none" stroke={ropa.sombra} strokeWidth="1.1" strokeOpacity="0.7" />
