@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Cuerpo, POSES, ROPA_BIKINI, ROPA_DESNUDA, PIEL, PIEL_SOMBRA } from '../mundo/Chica';
 import type { Pose, Ropa } from '../mundo/Chica';
-import { CHICO_PARADO, CuerpoChico } from './Chico';
+import { CHICO_PARADO, BrazosChico, CuerpoChico } from './Chico';
 import type { PoseChico } from './Chico';
 import { Cuarto } from './Cuarto';
 import { SC, SE, poner } from './Escenario';
@@ -11,7 +11,7 @@ import { Llamada } from '../minijuegos/Llamada';
 import { Mamada as MamadaJuego } from '../minijuegos/Mamada';
 import { nivelDe as nivelMamada, zoomDe } from '../minijuegos/mamada';
 import type { Estado as EstadoMamada, ResultadoM } from '../minijuegos/mamada';
-import { ELLA_AGACHA, ELLA_TRAGA, EL_MANOS, T_BAJAR, Y_RODILLAS, mezclaChico, mezclaPose, posesDe, profundidadDe, suave, vaiven as vaivenM } from './blowjob';
+import { ELLA_AGACHA, ELLA_TRAGA, EL_MANOS, SEPARACION, T_BAJAR, Y_RODILLAS, anticipo, fondo, mezclaChico, mezclaPose, posesDe, profundidadDe, vaiven as vaivenM } from './blowjob';
 import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { Call2, GestoElla, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
@@ -32,6 +32,10 @@ import styles from './paseo.module.css';
  * cámara se cierra, sudan, se les enciende la piel, a él se le levanta). Pasado el punto medio
  * se ponen de perrito y se mueven, y a ella le chorrea. Si él llega, eliges parar o seguir; si
  * sigues, se queda en la puerta y puedes humillarlo. Puedes ponerlo en altavoz.
+ *
+ * Si te arrodillas, entra el minijuego y el escenario se coloca solo: ella abajo con las
+ * rodillas dobladas y él inclinado con las manos en su cabeza. Los brazos de él se pintan
+ * aparte, por encima de ella, para que las manos se vean.
  */
 
 type Fase = 'sube' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin' | 'mamada';
@@ -49,7 +53,7 @@ const DETRAS_EL: PoseChico = { izq: [58, 92], der: [58, 92], cab: -6 };
 const ENCIMA_EL: PoseChico = { izq: [46, 74], der: [46, 74], cab: -12, inc: -3 };
 
 /** De perrito: ella doblada hacia el lado contrario a él, él encima de su cadera. */
-const PERRO_ELLA: Pose = { ...POSES[0], id: 'perro', nombre: 'De perrito', di: 44, fi: 20, dd: 44, fd: 20, inc: -32, cab: -14, sep: 26, rod: 30, baja: 92, cara: 'ojoscerrados' };
+const PERRO_ELLA: Pose = { ...POSES[0], id: 'perro', nombre: 'De perrito', di: 44, fi: 20, dd: 44, fd: 20, inc: -32, cab: -14, sep: 26, rod: 30, flex: 62, baja: 92, cara: 'ojoscerrados' };
 const PERRO_EL: PoseChico = { izq: [56, 78], der: [56, 78], cab: 14, inc: 22 };
 
 /** Posturas explícitas de pie: se van turnando cuando ya están desnudos. */
@@ -209,12 +213,15 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const mamando = fase === 'mamada';
   const zoomM = mm ? zoomDe(mm) : 0;
   // Ya se vino y pasó la corrida: ella traga y respira.
-  const pasoElFinal = !!mm && mm.orgasmos > 0 && mm.fase === 'activo';
+  const pasoElFinal = !!mm && mm.orgasmos > 0 && (mm.fase === 'activo' || mm.fase === 'fin');
   const ventana = Math.round((430 - Math.min(140, (mamando ? 60 : t) * 1.4)) * (1 - 0.3 * zoomM));
   const foco = escX - 130;
   const x0 = Math.max(0, Math.min(ancho - ventana, foco - ventana / 2));
   const centro = x0 + ventana / 2;
   const puertaX = centro - 216;
+  // Arrodillada la acción está en la cadera: la cámara baja con ella.
+  const altoM = mamando ? ALTO : ALTO;
+  const y0M = mamando ? Math.min(PISO - 200, 60 + zoomM * 40) : 0;
 
   const separados = fase === 'parando';
   const ritmo: Ritmo = call?.ritmo ?? 'firme';
@@ -223,18 +230,21 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   // El empuje: va y viene con el ritmo. Mueve al otro hacia ella y a ella un poco.
   const vaiven = perrito ? Math.sin(desde * EMPUJE[ritmo]) : 0;
   const d = separados ? 0 : perrito ? 30 + vaiven * 2.4 : t < 20 ? lerp(76, 40, t / 20) : t < 45 ? lerp(40, 34, (t - 20) / 25) : lerp(34, 28, (t - 45) / 20);
-  const ellaX = mamando ? centro - 20 : separados ? centro - 34 : centro - d / 2 - vaiven * 1.6;
-  const otroX = mamando ? centro + 20 - (mm ? Math.sin(desde * 6) * 1.5 : 0) : separados ? lerp(centro + 34, escX, desde / 0.9) : centro + d / 2 - vaiven * 3.2;
+  // Arrodillada la separación la manda SEPARACION, no el termómetro.
+  const ellaX = mamando ? centro - SEPARACION / 2 : separados ? centro - 34 : centro - d / 2 - vaiven * 1.6;
+  const otroX = mamando ? centro + SEPARACION / 2 : separados ? lerp(centro + 34, escX, desde / 0.9) : centro + d / 2 - vaiven * 3.2;
   const otroOculto = separados && desde > 0.9;
 
   const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
   // La mamada: se arrodilla (T_BAJAR) y luego sigue el vaivén según lo cerca que está él.
-  const bajaK = suave(desde / T_BAJAR);
+  const bajaK = suaveBajar(desde / T_BAJAR);
+  const vv = vaivenM(desde, ritmo);
+  const env = fondo(ritmo) + (1 - fondo(ritmo)) * vv;
   const profM = mm?.fase === 'corrida' ? 'garganta' : profundidadDe(mm ? nivelMamada(mm) : 0);
-  const posesM = posesDe(profM, vaivenM(desde, ritmo));
+  const posesM = posesDe(profM, env);
   const poseEllaM = desde < T_BAJAR ? mezclaPose(POSES[0], ELLA_AGACHA, bajaK) : pasoElFinal ? ELLA_TRAGA : posesM.ella;
   const poseOtroM: PoseChico = desde < T_BAJAR ? mezclaChico(CHICO_PARADO, EL_MANOS, bajaK) : pasoElFinal ? EL_MANOS : posesM.el;
-  const subeM = Y_RODILLAS * SE * (desde < T_BAJAR ? bajaK : 1);
+  const subeM = Y_RODILLAS * SE * (desde < T_BAJAR ? anticipo(desde / T_BAJAR) : 1);
   const caraElla =
     mamando
       ? (poseEllaM.cara ?? 'ojoscerrados')
@@ -255,7 +265,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 : 'ojoscerrados';
   const caraOtro =
     mamando
-      ? 'rendido'
+      ? profM === 'garganta' || pasoElFinal ? 'rendido' : 'embobado'
       : fase === 'decide' || fase === 'parando' || fase === 'frente'
       ? 'miedo'
       : fase === 'visto'
@@ -368,7 +378,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   return (
     <div className={styles.momento} role="dialog" aria-label="El momento">
       <div className={styles.momentoEscena}>
-      <svg className={styles.svg} viewBox={`${x0} 0 ${ventana} ${ALTO}`} preserveAspectRatio="xMidYMid slice" role="img" aria-label={texto}>
+      <svg className={styles.svg} viewBox={`${x0} ${y0M} ${ventana} ${altoM}`} preserveAspectRatio="xMidYMid slice" role="img" aria-label={texto}>
         <Cuarto escena={escena} ancho={ancho} luz={luz} />
         {/* la luz fría del teléfono cuando lo pones en altavoz */}
         {call?.altavoz && (
@@ -431,6 +441,10 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
         ))}
         <g className={t >= 96 ? styles.espasmo : undefined}>
           <g className={mecer ? styles.mecer : undefined} style={{ transformOrigin: `${centro}px ${PISO}px`, animationDuration: `${mecer || 3}s` }}>
+            {/* Ella primero: su cabeza tiene que taparle a él, no al revés. */}
+            <g transform={poner(ellaX, 1, SE, mamando ? subeM : 0)}>
+              <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} mojada={t >= 78} despeinada={t >= 45} />
+            </g>
             <g style={{ opacity: otroOculto ? 0 : 1, transition: 'opacity 0.35s' }}>
               <g transform={poner(otroX, separados ? 1 : -1, SC)}>
                 <CuerpoChico
@@ -444,9 +458,12 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 />
               </g>
             </g>
-            <g transform={poner(ellaX, 1, SE, mamando ? subeM : 0)}>
-              <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} mojada={t >= 78} despeinada={t >= 45} />
-            </g>
+            {/* Sus brazos por encima de ella: las manos se tienen que ver en su cabeza. */}
+            {mamando && (
+              <g transform={poner(otroX, -1, SC)}>
+                <BrazosChico look={otro.look} g={g(caraOtro)} pose={poseOtro} desnudo={desnudoEl} />
+              </g>
+            )}
           </g>
         </g>
         {/* el calor en la piel */}
@@ -502,7 +519,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             transform={`translate(${centro - 40 + ((i * 37) % 80)} ${PISO - 200 - ((i * 23) % 40)})`}
           />
         ))}
-        <rect x={x0} y={0} width={ventana} height={ALTO} fill="#0a0410" opacity={oscuro} pointerEvents="none" />
+        <rect x={x0} y={y0M} width={ventana} height={altoM} fill="#0a0410" opacity={oscuro} pointerEvents="none" />
       </svg>
 
       <p className={styles.lugarMomento}>🔒 {lugar}</p>
@@ -584,4 +601,10 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
       </div>
     </div>
   );
+}
+
+/** Suaviza el arranque de la bajada sin saltarse el tirón de `anticipo`. */
+function suaveBajar(t: number): number {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * (3 - 2 * x);
 }
