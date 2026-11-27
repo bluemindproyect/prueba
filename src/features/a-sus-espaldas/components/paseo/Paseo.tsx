@@ -47,7 +47,7 @@ import type { Aviso, Estado, Limpieza } from '@/features/a-sus-espaldas/lib/mund
 import { anchoDe, luzDe, posiciones, puertasDe } from '@/features/a-sus-espaldas/lib/paseo/cuartos';
 import { carasAbrazo } from '@/features/a-sus-espaldas/lib/paseo/abrazo';
 import { corazones, invitar, planear, puedeCerrar, seguidor, soltar, terminarMomento } from '@/features/a-sus-espaldas/lib/paseo/momento';
-import type { Final, Plan, Resultado } from '@/features/a-sus-espaldas/lib/paseo/momento';
+import type { Final, MamadaResultado, Plan, Resultado } from '@/features/a-sus-espaldas/lib/paseo/momento';
 import { useGuardado } from '@/features/a-sus-espaldas/lib/paseo/use-guardado';
 import { usePersistentState } from '@/lib/use-persistent-state';
 import { cn } from '@/lib/cn';
@@ -442,10 +442,10 @@ export default function Paseo() {
     guardado.registrar('cerrar', { con: p.id, lugar: s.lugar, entra: plan.entra, cerca: plan.cerca });
   };
 
-  const alTerminar = (final: Final, alcanzado: number, llamada?: CallResult) => {
+  const alTerminar = (final: Final, alcanzado: number, llamada?: CallResult, mamada?: MamadaResultado) => {
     const m = enCurso;
     if (!m) return;
-    const r = terminarMomento(eRef.current, m.con, m.plan, final, alcanzado, Math.random, llamada);
+    const r = terminarMomento(eRef.current, m.con, m.plan, final, alcanzado, Math.random, llamada, mamada);
     const s: Estado = { ...r.estado, ultimo: Date.now() };
     eRef.current = s;
     setE(s);

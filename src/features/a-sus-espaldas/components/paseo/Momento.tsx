@@ -8,6 +8,10 @@ import type { PoseChico } from './Chico';
 import { Cuarto } from './Cuarto';
 import { SC, SE, poner } from './Escenario';
 import { Llamada } from '../minijuegos/Llamada';
+import { Mamada as MamadaJuego } from '../minijuegos/Mamada';
+import { zoomDe } from '../minijuegos/mamada';
+import type { Mamada as EstadoMamada, ResultadoM } from '../minijuegos/mamada';
+import { ELLA_AGACHA, ELLA_TRAGA, EL_MANOS, T_BAJAR, Y_RODILLAS, mezclaChico, mezclaPose, posesDe, profundidadDe, suave, vaiven as vaivenM } from './blowjob';
 import { nivelDe, resultado } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { Call2, GestoElla, Ritmo } from '@/features/a-sus-espaldas/lib/minijuegos/llamada2';
 import type { CallResult } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
@@ -30,7 +34,7 @@ import styles from './paseo.module.css';
  * sigues, se queda en la puerta y puedes humillarlo. Puedes ponerlo en altavoz.
  */
 
-type Fase = 'sube' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin';
+type Fase = 'sube' | 'pasos' | 'decide' | 'frente' | 'parando' | 'visto' | 'fin' | 'mamada';
 
 const g = (id: string): Gesto => gestoPorId(id) ?? (gestoPorId('neutra') as Gesto);
 
@@ -94,7 +98,7 @@ interface Props {
   etapa: number;
   sospecha: number;
   plan: Plan;
-  onFin: (final: Final, alcanzado: number, llamada?: CallResult) => void;
+  onFin: (final: Final, alcanzado: number, llamada?: CallResult, mamada?: ResultadoM) => void;
 }
 
 export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sospecha, plan, onFin }: Props) {
@@ -106,6 +110,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const [aguante, setAguante] = useState(0);
   const aguanteMax = useRef(20);
   const [usados, setUsados] = useState<GestoElla[]>([]);
+  const [mm, setMm] = useState<EstadoMamada | null>(null);
   const [empuje, setEmpuje] = useState<{ tipo: GestoElla | 'altavoz'; n: number } | null>(null);
   const t = intensidadDe(call);
   const tRef = useRef(0);
@@ -121,10 +126,10 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
     setDesde(0);
   };
 
-  const terminar = (final: Final, alcanzado: number, espera: number, llamada?: CallResult) => {
+  const terminar = (final: Final, alcanzado: number, espera: number, llamada?: CallResult, mamada?: ResultadoM) => {
     if (fin.current) return;
     fin.current = true;
-    window.setTimeout(() => alFin.current(final, alcanzado, llamada), espera);
+    window.setTimeout(() => alFin.current(final, alcanzado, llamada, mamada), espera);
   };
 
   // El reloj de las fases (los pasos, la puerta, esconder al otro) y el aguante de él.
@@ -156,13 +161,26 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   /** La llamada se acabó (colgaste, colgó él o llegó el final). */
   const alColgar = (r: CallResult) => {
     const f = faseRef.current;
-    if (f === 'parando' || f === 'decide') return;
+    if (f === 'parando' || f === 'decide' || f === 'mamada') return;
     terminar(f === 'visto' || f === 'frente' ? 'visto' : 'completo', tRef.current, 0, r);
   };
 
   const parar = () => {
     ir('parando');
     terminar('parado', tRef.current, 2900, callRef.current ? resultado(callRef.current) : undefined);
+  };
+
+  /** Se arrodilla: el teléfono se pausa y entra el minijuego. */
+  const empezarMamada = () => {
+    if (faseRef.current !== 'sube') return;
+    setMm(null);
+    ir('mamada');
+    navigator.vibrate?.(30);
+  };
+
+  /** El minijuego terminó: el momento acaba y lo que pasó cuenta en el resultado. */
+  const alMamada = (r: ResultadoM) => {
+    terminar('completo', 100, 0, callRef.current ? resultado(callRef.current) : undefined, r);
   };
 
   const seguir = () => {
@@ -187,7 +205,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const escX = Math.round(ancho * esc.x);
   // La cámara se cierra sobre la pareja según sube la excitación.
   const elVisible = fase === 'decide' || fase === 'frente' || fase === 'parando' || fase === 'visto' || (fase === 'fin' && plan.entra && t >= plan.en);
-  const ventana = Math.round(430 - Math.min(140, t * 1.4));
+  const mamando = fase === 'mamada';
+  const zoomM = mm ? zoomDe(mm) : 0;
+  const ventana = Math.round((430 - Math.min(140, (mamando ? 60 : t) * 1.4)) * (1 - 0.3 * zoomM));
   const foco = escX - 130;
   const x0 = Math.max(0, Math.min(ancho - ventana, foco - ventana / 2));
   const centro = x0 + ventana / 2;
@@ -196,17 +216,26 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const separados = fase === 'parando';
   const ritmo: Ritmo = call?.ritmo ?? 'firme';
   // Pasado el punto medio se ponen de perrito, salvo cuando él entra o ella se aparta.
-  const perrito = !separados && fase !== 'decide' && t >= 62;
+  const perrito = !separados && fase !== 'decide' && !mamando && t >= 62;
   // El empuje: va y viene con el ritmo. Mueve al otro hacia ella y a ella un poco.
   const vaiven = perrito ? Math.sin(desde * EMPUJE[ritmo]) : 0;
   const d = separados ? 0 : perrito ? 30 + vaiven * 2.4 : t < 20 ? lerp(76, 40, t / 20) : t < 45 ? lerp(40, 34, (t - 20) / 25) : lerp(34, 28, (t - 45) / 20);
-  const ellaX = separados ? centro - 34 : centro - d / 2 - vaiven * 1.6;
-  const otroX = separados ? lerp(centro + 34, escX, desde / 0.9) : centro + d / 2 - vaiven * 3.2;
+  const ellaX = mamando ? centro - 20 : separados ? centro - 34 : centro - d / 2 - vaiven * 1.6;
+  const otroX = mamando ? centro + 20 - (mm ? Math.sin(desde * 6) * 1.5 : 0) : separados ? lerp(centro + 34, escX, desde / 0.9) : centro + d / 2 - vaiven * 3.2;
   const otroOculto = separados && desde > 0.9;
 
   const fase4 = t < 20 ? 0 : t < 45 ? 1 : t < 75 ? 2 : 3;
+  // La mamada: se arrodilla (T_BAJAR) y luego sigue el vaivén según lo cerca que está él.
+  const bajaK = suave(desde / T_BAJAR);
+  const profM = mm?.fase === 'corrida' ? 'garganta' : profundidadDe(mm?.nivel ?? 0);
+  const posesM = posesDe(profM, vaivenM(desde, ritmo));
+  const poseEllaM = desde < T_BAJAR ? mezclaPose(POSES[0], ELLA_AGACHA, bajaK) : mm?.fase === 'fin' ? ELLA_TRAGA : posesM.ella;
+  const poseOtroM: PoseChico = desde < T_BAJAR ? mezclaChico(CHICO_PARADO, EL_MANOS, bajaK) : mm?.fase === 'fin' ? EL_MANOS : posesM.el;
+  const subeM = Y_RODILLAS * SE * (desde < T_BAJAR ? bajaK : 1);
   const caraElla =
-    fase === 'decide'
+    mamando
+      ? (poseEllaM.cara ?? 'ojoscerrados')
+      : fase === 'decide'
       ? 'sorpresaella'
       : fase === 'parando'
         ? desde > 1.2
@@ -222,7 +251,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 ? 'ojoscerrados'
                 : 'ojoscerrados';
   const caraOtro =
-    fase === 'decide' || fase === 'parando' || fase === 'frente'
+    mamando
+      ? 'rendido'
+      : fase === 'decide' || fase === 'parando' || fase === 'frente'
       ? 'miedo'
       : fase === 'visto'
         ? 'avergonzado'
@@ -233,7 +264,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             : perrito
               ? 'rendido'
               : 'rendido';
-  const poseElla = separados
+  const poseElla = mamando
+    ? poseEllaM
+    : separados
     ? COMO_SI_NADA
     : perrito
       ? PERRO_ELLA
@@ -244,7 +277,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
           : t < 45
             ? BESO
             : FUERTES[(Math.floor(desde / 5) + fase4) % FUERTES.length];
-  const poseOtro: PoseChico = separados
+  const poseOtro: PoseChico = mamando
+    ? poseOtroM
+    : separados
     ? { ...CHICO_PARADO, paso: desde < 0.9 ? Math.sin(desde * 18) : 0 }
     : perrito
       ? PERRO_EL
@@ -268,8 +303,8 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
           ? sospecha >= 40 || desde > 1.6 ? 'sospechosoleve' : 'extrañado'
           : listaVisto[Math.min(listaVisto.length - 1, Math.floor(desde / 1.4))];
 
-  const mecer = separados || fase === 'decide' ? 0 : MECER[ritmo] * [1.25, 1.1, 1, 0.9][fase4];
-  const corazones = separados || fase === 'decide' ? 0 : [0, 3, 6, 9][fase4];
+  const mecer = separados || mamando || fase === 'decide' ? 0 : MECER[ritmo] * [1.25, 1.1, 1, 0.9][fase4];
+  const corazones = separados || mamando || fase === 'decide' ? 0 : [0, 3, 6, 9][fase4];
   const oscuro = 0.06 + t * 0.0034;
   const bpm = Math.round(76 + t * 0.7 + (ritmo === 'rapido' ? 10 : ritmo === 'lento' ? -4 : 0));
   const nivel = call ? nivelDe(call) : 1;
@@ -280,11 +315,11 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const ropa = ropaDe(tramo);
   const ropaElla = ropa === 'bikini' ? ROPA_BIKINI : ropa === 'topFuera' ? ROPA_TOP_FUERA : ROPA_DESNUDA;
   // A él se le va levantando con el termómetro; sin ropa se le ve.
-  const desnudoEl = ropa !== 'bikini';
-  const ereccion = Math.min(1, 0.3 + t / 90);
+  const desnudoEl = ropa !== 'bikini' || mamando;
+  const ereccion = mamando ? 1 : Math.min(1, 0.3 + t / 90);
   // Él recoge el top del suelo cuando entra.
   const topX = fase === 'frente' || fase === 'visto' ? puertaX + 62 : centro + 92;
-  const corrida = t >= 100 || fase === 'fin';
+  const corrida = t >= 100 || fase === 'fin' || (mamando && !!mm && mm.fase !== 'sube');
   const sudor = Math.min(7, Math.max(0, Math.floor((t - 45) / 8)));
   // Lo que chorrea: desde que se pone de perrito hasta que él entra o ella se aparta.
   const chorrea = perrito && t >= 66;
@@ -292,7 +327,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
   // La frase cambia sola cada ~5 s mientras la escena sigue; al final se queda una.
   useEffect(() => {
-    if (fase === 'pasos' || fase === 'decide' || fase === 'parando' || fase === 'frente') return;
+    if (fase === 'pasos' || fase === 'decide' || fase === 'parando' || fase === 'frente' || fase === 'mamada') return;
     if (fase === 'fin') {
       setLinea(climaxDe());
       return;
@@ -309,7 +344,9 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   }, [fase, aguante]);
 
   const texto =
-    fase === 'pasos'
+    fase === 'mamada'
+      ? mm?.fase === 'corrida' ? 'No pares.' : mm?.fase === 'fin' ? 'Lo sueltas.' : 'Te arrodillas frente a él.'
+      : fase === 'pasos'
       ? 'Se oyen pasos…'
       : fase === 'decide'
         ? `${nombreEl} abre la puerta.`
@@ -404,7 +441,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
                 />
               </g>
             </g>
-            <g transform={poner(ellaX, 1, SE)}>
+            <g transform={poner(ellaX, 1, SE, mamando ? subeM : 0)}>
               <Cuerpo g={g(caraElla)} ropa={ropaElla} pose={poseElla} mojada={t >= 78} despeinada={t >= 45} />
             </g>
           </g>
@@ -466,9 +503,15 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
       </svg>
 
       <p className={styles.lugarMomento}>🔒 {lugar}</p>
-      {call && !call.altavoz && fase !== 'fin' && (
+      {call && !call.altavoz && fase !== 'fin' && fase !== 'mamada' && (
         <button type="button" className={styles.altavoz} onClick={ponerAltavoz}>
           🔊 Ponerlo en altavoz
+        </button>
+      )}
+      {fase === 'sube' && t >= 20 && (
+        <button type="button" className={styles.mamarBtn} onClick={empezarMamada}>
+          🙇 Arrodillarte
+          <small>bajar hasta él</small>
         </button>
       )}
       {/* El termómetro de excitación: sube con el ritmo que eliges en el teléfono */}
@@ -510,7 +553,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
               <span>👁</span>Sostenerle la mirada
               <small>que le duela</small>
             </button>
-            <button type="button" className={styles.gesto} disabled={usados.includes('tapas') || usados.includes('tapa')} onClick={() => hacerGesto('tapa')}>
+            <button type="button" className={styles.gesto} disabled={usados.includes('tapa')} onClick={() => hacerGesto('tapa')}>
               <span>🫣</span>Taparte la boca
               <small>que no te oiga</small>
             </button>
@@ -532,7 +575,12 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
 
       {/* El teléfono: su propio espacio, nada lo tapa */}
       <div className={styles.momentoTelefono}>
-        <Llamada name={nombreEl} incrustada largo pausada={fase === 'decide' || fase === 'parando'} acelera={fase === 'visto' || fase === 'frente' ? 2 : 1} onProgreso={alProgreso} onFinish={alColgar} empuje={empuje ?? undefined} />
+        {fase === 'mamada' && (
+          <div className={styles.mamadaCapa}>
+            <MamadaJuego pausada={desde < T_BAJAR} onProgreso={setMm} onFinish={alMamada} />
+          </div>
+        )}
+        <Llamada name={nombreEl} incrustada largo pausada={fase === 'decide' || fase === 'parando' || fase === 'mamada'} acelera={fase === 'visto' || fase === 'frente' ? 2 : 1} onProgreso={alProgreso} onFinish={alColgar} empuje={empuje ?? undefined} />
       </div>
     </div>
   );

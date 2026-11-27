@@ -81,6 +81,13 @@ export function planear(e: Estado, rng: Rng = Math.random): Plan {
 /** Cómo terminó: sin que él entrara, parando a tiempo, o siguiendo frente a él. */
 export type Final = 'completo' | 'parado' | 'visto';
 
+/** Lo que dejó el minijuego de la mamada (es un subconjunto de `ResultadoM`). */
+export interface MamadaResultado {
+  chorros: number;
+  segundos: number;
+  sobre: number;
+}
+
 export interface Resultado {
   estado: Estado;
   ganado: number;
@@ -92,7 +99,7 @@ export interface Resultado {
 }
 
 /** Termina el momento: lo que ganas tú y lo que le pasa a él. No modifica el estado anterior. */
-export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final, alcanzado: number, rng: Rng = Math.random, llamada?: CallResult): Resultado {
+export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final, alcanzado: number, rng: Rng = Math.random, llamada?: CallResult, mamada?: MamadaResultado): Resultado {
   const lugar = lugarPorId(e.ciclo, e.lugar);
   const motivos: { icono: string; texto: string }[] = [];
   let sat = 8;
@@ -134,6 +141,12 @@ export function terminarMomento(e: Estado, p: Persona, plan: Plan, final: Final,
       sat += 6;
       motivos.push({ icono: '🔊', texto: 'Se oyó todo al final' });
     }
+  }
+  // El minijuego: más tiempo y más chorros dan más satisfacción.
+  if (mamada) {
+    const extra = Math.min(14, Math.round(mamada.segundos / 6 + mamada.chorros * 1.5 + mamada.sobre));
+    sat += extra;
+    motivos.push({ icono: '🙇', texto: `Lo llevaste hasta el final +${extra}` });
   }
   if (final === 'parado') sat *= Math.max(0.3, alcanzado / 100);
   if (final === 'visto') {
