@@ -213,7 +213,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
   const mamando = fase === 'mamada';
   const zoomM = mm ? zoomDe(mm) : 0;
   // Ya se vino y pasó la corrida: ella traga y respira.
-  const pasoElFinal = !!mm && mm.orgasmos > 0 && (mm.fase === 'activo' || mm.fase === 'fin');
+  const pasoElFinal = !!mm && mm.orgasmos > 0 && mm.fase === 'activo';
   const ventana = Math.round((430 - Math.min(140, (mamando ? 60 : t) * 1.4)) * (1 - 0.3 * zoomM));
   const foco = escX - 130;
   const x0 = Math.max(0, Math.min(ancho - ventana, foco - ventana / 2));
@@ -461,7 +461,7 @@ export function Momento({ escena, ancho, luz, lugar, otro, nombreEl, etapa, sosp
             {/* Sus brazos por encima de ella: las manos se tienen que ver en su cabeza. */}
             {mamando && (
               <g transform={poner(otroX, -1, SC)}>
-                <BrazosChico look={otro.look} g={g(caraOtro)} pose={poseOtro} desnudo={desnudoEl} />
+                <BrazosChico look={otro.look} pose={poseOtro} desnudo={desnudoEl} />
               </g>
             )}
           </g>
