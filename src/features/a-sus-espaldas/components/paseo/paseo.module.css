@@ -300,6 +300,7 @@
   min-height: 0;
 }
 .momentoTelefono {
+  position: relative;
   min-height: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: #0a0710;
@@ -853,3 +854,27 @@ a.menuBtn2 {
   0% { opacity: 0; transform: scale(0.2); }
   100% { opacity: 0.9; transform: scale(1); }
 }
+/* El minijuego de la mamada se pone encima del teléfono (que sigue montado y en pausa). */
+.mamadaCapa {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+.mamarBtn {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 5.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--rose);
+  border-radius: 14px;
+  background: rgba(23, 18, 31, 0.82);
+  color: #fff;
+  font-family: var(--prose);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+.mamarBtn small { font-family: var(--util); font-style: normal; font-size: 0.6rem; color: var(--muted); }

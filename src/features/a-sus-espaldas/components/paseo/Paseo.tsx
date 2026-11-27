@@ -28,6 +28,7 @@ import {
   ir,
   limpiar,
   lugarPorId,
+  percibir,
   lugares,
   nuevoCiclo,
   personas,
@@ -46,7 +47,7 @@ import type { Aviso, Estado, Limpieza } from '@/features/a-sus-espaldas/lib/mund
 import { anchoDe, luzDe, posiciones, puertasDe } from '@/features/a-sus-espaldas/lib/paseo/cuartos';
 import { carasAbrazo } from '@/features/a-sus-espaldas/lib/paseo/abrazo';
 import { corazones, invitar, planear, puedeCerrar, seguidor, soltar, terminarMomento } from '@/features/a-sus-espaldas/lib/paseo/momento';
-import type { Final, Plan, Resultado } from '@/features/a-sus-espaldas/lib/paseo/momento';
+import type { Final, MamadaResultado, Plan, Resultado } from '@/features/a-sus-espaldas/lib/paseo/momento';
 import { useGuardado } from '@/features/a-sus-espaldas/lib/paseo/use-guardado';
 import { usePersistentState } from '@/lib/use-persistent-state';
 import { cn } from '@/lib/cn';
@@ -245,6 +246,17 @@ export default function Paseo() {
     setBurbuja({ id, texto: paraGlobo(texto), n: burbujaN.current });
   };
 
+  // Si pasa junto a alguien con el pelo revuelto, lo nota (una vez por persona hasta que se bañe).
+  useEffect(() => {
+    if (!cerca || !e.rastros.despeinada || (e.notaron ?? []).includes(cerca)) return;
+    const quien = cerca === 'el' ? undefined : personas(e.ciclo).find((p) => p.id === cerca);
+    const r = percibir(e, cerca, quien);
+    if (!r) return;
+    setE(r.estado);
+    decir(cerca, r.frase);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cerca]);
+
   /* ---------- lo que hay en pantalla ---------- */
 
   const et = etapaDe(e);
@@ -430,10 +442,10 @@ export default function Paseo() {
     guardado.registrar('cerrar', { con: p.id, lugar: s.lugar, entra: plan.entra, cerca: plan.cerca });
   };
 
-  const alTerminar = (final: Final, alcanzado: number, llamada?: CallResult) => {
+  const alTerminar = (final: Final, alcanzado: number, llamada?: CallResult, mamada?: MamadaResultado) => {
     const m = enCurso;
     if (!m) return;
-    const r = terminarMomento(eRef.current, m.con, m.plan, final, alcanzado, Math.random, llamada);
+    const r = terminarMomento(eRef.current, m.con, m.plan, final, alcanzado, Math.random, llamada, mamada);
     const s: Estado = { ...r.estado, ultimo: Date.now() };
     eRef.current = s;
     setE(s);
@@ -492,6 +504,7 @@ export default function Paseo() {
     const r = e.rastros;
     if (lugarAct.id === 'casa-habitacion' && r.sabanas) acciones.push({ id: 'sabanas', ico: '🧺', texto: 'Cambiar las sábanas', corto: 'Sábanas', hacer: () => limpiarYa('sabanas') });
     if ((lugarAct.escena === 'bano' || lugarAct.escena === 'vestidor') && r.olor > 5) acciones.push({ id: 'banar', ico: '🚿', texto: 'Bañarte', corto: 'Bañarte', hacer: () => limpiarYa('banar') });
+    if (r.despeinada && lugarAct.privado) acciones.push({ id: 'peinar', ico: '💇', texto: 'Arreglarte el pelo', corto: 'Peinarte', hacer: () => limpiarYa('peinar') });
     if (lugarAct.zona === 'casa' && r.ropa) acciones.push({ id: 'ropa-tirada', ico: '👕', texto: 'Esconder su ropa', corto: 'Su ropa', hacer: () => limpiarYa('ropa') });
     if (lugarAct.escena === 'sotano' && (r.sabanas || r.ropa)) acciones.push({ id: 'caja', ico: '📦', texto: 'Guardar todo en una caja', corto: 'Caja', hacer: () => limpiarYa('esconder') });
     if (ESCENAS_ROPA.has(lugarAct.escena) && lugarAct.privado && !sigue) {
@@ -577,6 +590,7 @@ export default function Paseo() {
   const rastros: string[] = [];
   if (e.rastros.sabanas) rastros.push('Las sábanas huelen a otro: cámbialas en tu habitación.');
   if (e.rastros.ropa) rastros.push('Quedó ropa tirada: escóndela en tu casa.');
+  if (e.rastros.despeinada) rastros.push('Traes el pelo revuelto: si pasas junto a alguien lo va a notar. Arréglatelo en un lugar privado o báñate.');
   if (e.rastros.olor > 5) rastros.push(`Hueles a otro perfume (${Math.round(e.rastros.olor)}%): báñate.`);
   if (e.rastros.escondido) rastros.push('Hay una caja escondida en el sótano. Si él baja, puede encontrarla.');
 
@@ -613,6 +627,7 @@ export default function Paseo() {
         gente={gente}
         ropa={ropa}
         ropaN={ropaN}
+        despeinada={!!e.rastros.despeinada}
         gestoElla={gesto(caraElla)}
         seguidor={sigue ? { look: sigue.look, g: gesto('embobado'), nombre: sigue.nombre } : null}
         seguidorDesde={desde}

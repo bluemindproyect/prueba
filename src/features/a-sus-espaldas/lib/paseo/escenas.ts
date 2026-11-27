@@ -122,7 +122,8 @@ export const CLIMAX: readonly string[] = [
 const pick = <T,>(l: readonly T[], rng: Rng): T => l[Math.floor(rng() * l.length) % l.length];
 
 /** Una línea del tramo y el ritmo actuales. `evitar` es la que ya está en pantalla. */
-export function lineaDe(tramo: Tramo, ritmo: Ritmo, rng: Rng = Math.random, evitar = ''): string {
+// `_escena` queda para variar las líneas según el lugar.
+export function lineaDe(tramo: Tramo, ritmo: Ritmo, rng: Rng = Math.random, evitar = '', _escena?: unknown): string {
   if (rng() < 0.22) {
     const cerca = pick(CERCA, rng);
     if (cerca !== evitar) return cerca;

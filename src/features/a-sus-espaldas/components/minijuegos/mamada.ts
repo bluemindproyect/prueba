@@ -1,4 +1,4 @@
-import type { Rng } from './llamada';
+import type { Rng } from '@/features/a-sus-espaldas/lib/minijuegos/llamada';
 
 /**
  * Minijuego «Mamada». La barra sube mientras aprietas y baja si sueltas. Al llegar al límite

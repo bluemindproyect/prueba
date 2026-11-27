@@ -52,7 +52,9 @@ export interface Estado {
   veces: Record<string, number>;
   dicho: string[];
   sabe: string[];
-  rastros: { sabanas: boolean; ropa: boolean; olor: number; escondido: boolean };
+  rastros: { sabanas: boolean; ropa: boolean; olor: number; escondido: boolean; despeinada?: boolean };
+  /** a quién ya le llamó la atención su aspecto (se limpia al bañarte) */
+  notaron?: string[];
   pendiente: string | null;
   escena: EscenaEnCurso | null;
   aviso: Aviso | null;
@@ -82,7 +84,8 @@ export function fresco(): Estado {
     veces: {},
     dicho: [],
     sabe: [],
-    rastros: { sabanas: false, ropa: false, olor: 0, escondido: false },
+    rastros: { sabanas: false, ropa: false, olor: 0, escondido: false, despeinada: false },
+    notaron: [],
     pendiente: null,
     escena: null,
     aviso: null,
@@ -364,7 +367,8 @@ function terminarEscena(e: Estado): Estado {
     desglose.push('primera vez con esta persona +5');
   }
   let s: Estado = { ...e, escena: null, sat: e.sat + sat, satCiclo: e.satCiclo + sat, veces: { ...e.veces, [p.id]: (e.veces[p.id] ?? 0) + 1 }, interes: { ...e.interes, [p.id]: clamp((e.interes[p.id] ?? 0) - 25, 0, 130) } };
-  s.rastros = { ...s.rastros, sabanas: s.rastros.sabanas || lugar.escena === 'cama', ropa: s.rastros.ropa || Math.random() < 0.5, olor: 70 };
+  s.rastros = { ...s.rastros, sabanas: s.rastros.sabanas || lugar.escena === 'cama', ropa: s.rastros.ropa || Math.random() < 0.5, olor: 70, despeinada: true };
+  s.notaron = [];
   let nota = `+${sat} de satisfacción (${desglose.join(', ') || 'lo básico'}).`;
   // Fugas: pequeños detalles que él nota sin entender.
   if (Math.random() < 0.28) {
@@ -425,7 +429,7 @@ export function dejarPista(e: Estado): Estado {
   return { ...s, ultima: 'Dejas algo a la vista, como por descuido. Él lo va a encontrar.', log: log(s, 'Dejaste una pista a la vista.') };
 }
 
-export type Limpieza = 'sabanas' | 'ropa' | 'banar' | 'esconder';
+export type Limpieza = 'sabanas' | 'ropa' | 'banar' | 'esconder' | 'peinar';
 export function limpiar(e: Estado, que: Limpieza): Estado {
   const r = { ...e.rastros };
   let t = '';
@@ -435,17 +439,51 @@ export function limpiar(e: Estado, que: Limpieza): Estado {
   } else if (que === 'ropa') {
     r.ropa = false;
     t = 'Escondes la ropa que quedó tirada.';
+  } else if (que === 'peinar') {
+    r.despeinada = false;
+    t = 'Te acomodas el pelo frente al espejo. Ya no se nota nada, aunque el olor sigue ahí.';
   } else if (que === 'banar') {
     r.olor = 0;
-    t = 'Te bañas hasta no oler a nadie.';
+    r.despeinada = false;
+    t = 'Te bañas hasta no oler a nadie. Te peinas frente al espejo: ya no se nota nada.';
   } else {
     r.escondido = true;
     r.sabanas = false;
     r.ropa = false;
     t = 'Guardas todo en una caja del sótano. Quizá no deberías.';
   }
-  const s = avanzar({ ...e, rastros: r }, que === 'banar' ? 18 : 10);
+  const s = avanzar({ ...e, rastros: r, notaron: que === 'banar' ? [] : e.notaron }, que === 'banar' ? 18 : que === 'peinar' ? 5 : 10);
   return { ...s, ultima: t, log: log(s, t) };
+}
+
+/** Frases de quien la ve despeinada, según quién sea. */
+const NOTAN_EL = ['¿Y ese pelo?', 'Estás toda despeinada… ¿dónde andabas?', 'Tienes el pelo revuelto, amor.'];
+const NOTAN_OTRO = ['Uy, vienes bien despeinada.', 'Ese pelo cuenta una historia, ¿eh?', 'Te falta un peine… y una explicación.'];
+
+/**
+ * Ella pasa junto a alguien con el pelo revuelto: él lo nota y se queda pensando; los demás
+ * lo comentan y a veces se lo cuentan a él. Cada persona lo nota una sola vez hasta que te bañes.
+ */
+export function percibir(e: Estado, id: string, p?: Persona): { estado: Estado; frase: string } | null {
+  if (!e.rastros.despeinada || e.escena) return null;
+  const ya = e.notaron ?? [];
+  if (ya.includes(id)) return null;
+  const notaron = [...ya, id];
+  if (id === 'el') {
+    const frase = azar(NOTAN_EL);
+    const s: Estado = {
+      ...e,
+      notaron,
+      sospecha: clamp(e.sospecha + 7),
+      sabe: [...e.sabe, 'Llegaste despeinada'].slice(-12),
+      log: log(e, `${e.nombre} te mira el pelo revuelto. «${frase}»`),
+    };
+    return { estado: s, frase };
+  }
+  const frase = azar(NOTAN_OTRO);
+  const s: Estado = { ...e, notaron, log: log(e, `${p?.nombre ?? 'Alguien'} te vio despeinada.`) };
+  if (Math.random() < 0.3) s.chismes = [...(e.chismes ?? []), e.reloj + 120 + Math.floor(Math.random() * 240)];
+  return { estado: s, frase };
 }
 
 /* ---------- avisos ---------- */

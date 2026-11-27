@@ -187,7 +187,7 @@ function Brazo({ s, a1, a2 }: { s: 1 | -1; a1: number; a2: number }) {
   );
 }
 
-export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean }) {
+export function Cuerpo({ g, ropa, pose, mojada = false, despeinada = false }: { g: Gesto; ropa: Ropa; pose: Pose; mojada?: boolean; despeinada?: boolean }) {
   const pelo = mojada ? '#1b1220' : PELO;
   const cabeza = `rotate(${pose.cab} 120 136) translate(120 136) scale(1 0.84) translate(-120 -136)`;
   const sep = (pose.sep ?? 0) * 0.5;
@@ -317,6 +317,20 @@ export function Cuerpo({ g, ropa, pose, mojada = false }: { g: Gesto; ropa: Ropa
         <path d="M146 60 C150 80 150 104 146 126 M94 120 C92 150 92 180 94 205" fill="none" stroke={PELO_LUZ} strokeWidth="1.6" strokeOpacity="0.6" strokeLinecap="round" />
         <path d="M118 42 C112 54 104 66 96 78" fill="none" stroke={PELO_LUZ} strokeWidth="1.6" strokeLinecap="round" />
         <path d="M104 40 C116 34 130 36 140 44" fill="none" stroke={PELO_LUZ} strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.8" />
+        {despeinada && !mojada && (
+          <g fill="none" stroke={pelo} strokeLinecap="round">
+            {/* mechones sueltos que se escapan del peinado */}
+            <path d="M100 42 C92 34 88 28 92 20" strokeWidth="2" />
+            <path d="M112 38 C110 28 116 22 122 18" strokeWidth="1.8" />
+            <path d="M132 38 C138 30 146 28 150 20" strokeWidth="2" />
+            <path d="M146 48 C156 44 164 50 166 60" strokeWidth="1.8" />
+            <path d="M92 52 C84 54 80 62 82 72" strokeWidth="1.8" />
+            {/* pelo pegado a la frente y la mejilla */}
+            <path d="M104 80 C108 90 106 100 110 108" strokeWidth="1.3" strokeOpacity="0.8" />
+            <path d="M140 84 C138 96 142 106 138 116" strokeWidth="1.3" strokeOpacity="0.8" />
+            <path d="M96 60 C106 56 118 60 126 56" stroke={PELO_LUZ} strokeWidth="1.2" strokeOpacity="0.6" />
+          </g>
+        )}
         {mojada && (
           <g>
             <path d="M96 100 C94 112 96 124 100 134 M144 100 C146 112 144 124 140 134 M110 80 C108 90 110 98 112 104" fill="none" stroke="#6b5a86" strokeOpacity="0.7" strokeWidth="1.3" strokeLinecap="round" />

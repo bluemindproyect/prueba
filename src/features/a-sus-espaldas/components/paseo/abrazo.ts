@@ -35,6 +35,8 @@ export interface Efecto {
 export const SEPARACION = 40;
 export const T_ABRIR = 0.5;
 export const T_CERRAR = 0.7;
+/** Lo que tarda en cerrar los brazos (la fase «abrazar» del escenario). */
+export const T_ABRAZAR = T_CERRAR;
 export const T_PEGAR = 0.5;
 export const T_MANTENER = 2.6;
 /** Cada cuánto se menea la cadera mientras están pegados. */
