@@ -66,13 +66,15 @@ export function Rostro({ g, aspecto = ASPECTO_EL, size = 96 }: { g: Gesto; aspec
   const cL = y0 - g.k * 3.5 + (g.lado < 0 ? -g.lado * -4 : 0);
   const cR = y0 - g.k * 3.5 - g.lado * 5;
   const mid = y0 + g.k * 21;
-  const lowY = mid + g.open * 15 + Math.max(0, g.k) * 4;
+  const lowY = mid + g.open * 22 + Math.max(0, g.k) * 4;
   const boca =
     g.open > 0.05 ? (
       <g>
         <path d={`M${f(-w)} ${f(cL)} Q0 ${f(mid)} ${f(w)} ${f(cR)} Q0 ${f(lowY + g.open * 6)} ${f(-w)} ${f(cL)} Z`} fill="#5a1f2a" />
         {ex('dientes') && <path d={`M${f(-w * 0.8)} ${f(cL + 1)} Q0 ${f(mid + 1)} ${f(w * 0.8)} ${f(cR + 1)} L${f(w * 0.7)} ${f(cR + 5)} Q0 ${f(mid + 6)} ${f(-w * 0.7)} ${f(cL + 5)} Z`} fill="#fff" />}
-        {g.k > 0.5 && g.open > 0.2 && <path d={`M${f(-w * 0.6)} ${f(mid + g.open * 7)} Q0 ${f(mid + g.open * 11)} ${f(w * 0.6)} ${f(mid + g.open * 7)}`} fill="none" stroke="#b5606a" strokeWidth="2" />}
+        {g.open > 0.25 && (
+          <ellipse cx="0" cy={f(lowY - 3)} rx={f(w * 0.55)} ry={f(1.6 + g.open * 3)} fill="#b5606a" />
+        )}
       </g>
     ) : (
       <path d={`M${f(-w)} ${f(cL)} Q0 ${f(mid)} ${f(w)} ${f(cR)}`} fill="none" stroke="#a3524a" strokeWidth="2.6" strokeLinecap="round" />
@@ -179,7 +181,6 @@ function RostroElla({ g, aspecto, size }: { g: Gesto; aspecto: Aspecto; size: nu
   const estilo = aspecto.estilo ?? 'lacio';
   const iris = aspecto.ojos ?? '#5a3350';
   const lab = aspecto.labios ?? '#d9567a';
-  const lab2 = claro(lab);
   const ex = (e: string) => g.extras.includes(e as Gesto['extras'][number]);
 
   const cejas = lados.map((s) => {
@@ -195,21 +196,10 @@ function RostroElla({ g, aspecto, size }: { g: Gesto; aspecto: Aspecto; size: nu
     const ry = Math.max(0.7, 8.6 * g.abre);
     const mx = g.mx * 2.6;
     const my = g.my * 2;
-    const pestana = null;
     if (g.forma === 1)
-      return (
-        <g key={s}>
-          <path d={`M${f(cx - 9)} 4.5 Q${f(cx)} -5 ${f(cx + 9)} 4.5`} fill="none" stroke={tinta} strokeWidth="2.4" strokeLinecap="round" />
-          {pestana}
-        </g>
-      );
+      return <path key={s} d={`M${f(cx - 9)} 4.5 Q${f(cx)} -5 ${f(cx + 9)} 4.5`} fill="none" stroke={tinta} strokeWidth="2.4" strokeLinecap="round" />;
     if (g.forma === 2 || g.abre < 0.15)
-      return (
-        <g key={s}>
-          <path d={`M${f(cx - 9)} 2.5 Q${f(cx)} 9.5 ${f(cx + 9)} 2.5`} fill="none" stroke={tinta} strokeWidth="2.4" strokeLinecap="round" />
-          {pestana}
-        </g>
-      );
+      return <path key={s} d={`M${f(cx - 9)} 2.5 Q${f(cx)} 9.5 ${f(cx + 9)} 2.5`} fill="none" stroke={tinta} strokeWidth="2.4" strokeLinecap="round" />;
     const rr = g.forma === 3 ? Math.min(ry, 3.8) : ry;
     const ix = cx + mx;
     const iy = 3 + my * 0.5;
@@ -239,21 +229,23 @@ function RostroElla({ g, aspecto, size }: { g: Gesto; aspecto: Aspecto; size: nu
   const cL = y0 - g.k * 3;
   const cR = y0 - g.k * 3 - g.lado * 4.5;
   const mid = y0 + g.k * 8;
+  // La barbilla baja con la boca abierta; si no, la abertura se sale de la cara.
+  const barbilla = 44 + g.open * 9;
+  const bajo = mid + g.open * 20 + 4;
   const labioSup = `M${f(-w)} ${f(cL)} C${f(-w * 0.55)} ${f(cL - 3)} -2.6 ${f(mid - 4.6)} 0 ${f(mid - 3)} C2.6 ${f(mid - 4.6)} ${f(w * 0.55)} ${f(cR - 3)} ${f(w)} ${f(cR)}`;
   const boca =
     g.open > 0.08 ? (
       <g>
-        <path d={`${labioSup} Q0 ${f(mid + g.open * 15 + 6)} ${f(-w)} ${f(cL)} Z`} fill="#5a1f2a" />
+        <path d={`${labioSup} Q0 ${f(bajo)} ${f(-w)} ${f(cL)} Z`} fill="#5a1f2a" />
         {ex('dientes') && <path d={`M${f(-w * 0.7)} ${f(cL + 1)} Q0 ${f(mid - 1)} ${f(w * 0.7)} ${f(cR + 1)} L${f(w * 0.6)} ${f(cR + 4.4)} Q0 ${f(mid + 3)} ${f(-w * 0.6)} ${f(cL + 4.4)} Z`} fill="#fff" />}
-        {g.open > 0.4 && <ellipse cx="0" cy={f(mid + g.open * 11 + 3)} rx={f(w * 0.45)} ry="2.6" fill="#c4506a" />}
-        <path d={`${labioSup} Q0 ${f(mid + g.open * 15 + 6)} ${f(-w)} ${f(cL)} Z`} fill="none" stroke={lab} strokeWidth="1.6" strokeLinejoin="round" />
-        
+        {g.open > 0.25 && <ellipse cx="0" cy={f(bajo - 4)} rx={f(w * 0.55)} ry={f(1.4 + g.open * 3)} fill="#c4506a" />}
+        <path d={`${labioSup} Q0 ${f(bajo)} ${f(-w)} ${f(cL)} Z`} fill="none" stroke={lab} strokeWidth="1.6" strokeLinejoin="round" />
       </g>
     ) : (
       <path d={`M${f(-w)} ${f(cL)} Q0 ${f(mid + 1.6)} ${f(w)} ${f(cR)}`} fill="none" stroke={lab} strokeWidth="2" strokeLinecap="round" />
     );
 
-  const cara = 'M-28 -4 C-28 -32 -15 -42 0 -42 C15 -42 28 -32 28 -4 C28 18 16 42 0 44 C-16 42 -28 18 -28 -4 Z';
+  const cara = `M-28 -4 C-28 -32 -15 -42 0 -42 C15 -42 28 -32 28 -4 C28 ${f(18 + g.open * 5)} ${f(16 - g.open * 2)} ${f(barbilla - 2)} 0 ${f(barbilla)} C${f(-16 + g.open * 2)} ${f(barbilla - 2)} -28 ${f(18 + g.open * 5)} -28 -4 Z`;
 
   return (
     <svg viewBox="-52 -58 104 124" width={size} height={size * (124 / 104)} role="img" aria-label={g.nombre}>
@@ -263,8 +255,8 @@ function RostroElla({ g, aspecto, size }: { g: Gesto; aspecto: Aspecto; size: nu
       <path d="M-44 70 C-42 56 -20 49 -8 48 L8 48 C20 49 42 56 44 70 Z" fill={aspecto.ropa ?? '#e0457b'} />
       <path d="M-8 48 Q0 56 8 48" fill={piel} stroke={sombra} strokeOpacity="0.3" strokeWidth="1" />
       <path d={cara} fill={piel} stroke={sombra} strokeOpacity="0.45" strokeWidth="0.9" />
-      <path d="M28 -4 C28 18 16 42 0 44 C8 34 19 16 21 -2 Z" fill={sombra} fillOpacity="0.2" />
-            {ex('palido') && <path d={cara} fill="#fff" fillOpacity="0.16" />}
+      <path d={`M28 -4 C28 ${f(18 + g.open * 5)} ${f(16 - g.open * 2)} ${f(barbilla - 2)} 0 ${f(barbilla)} C8 ${f(barbilla - 8)} 19 ${f(16 - g.open * 2)} 21 -2 Z`} fill={sombra} fillOpacity="0.2" />
+      {ex('palido') && <path d={cara} fill="#fff" fillOpacity="0.16" />}
       <PeinadoAdelante estilo={estilo} color={aspecto.pelo} />
       {estilo !== 'bob' && <Flequillo color={aspecto.pelo} />}
       <g transform="translate(0,5.5)">
